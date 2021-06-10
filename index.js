@@ -41,14 +41,12 @@ const connection = mongoose.connection;
 io.on("connection", (socket) => {
   socket.on("join", ({ roomId }) => {
     socket.join(roomId);
-    console.log(roomId);
     const newMessage = connection.collection("one_one_messages").watch();
     newMessage.on("change", (change) => {
       if (change.operationType === "insert") {
         const message = change.fullDocument;
-        console.log(message);
         if (message.id === roomId) {
-          io.to(roomId).emit("one_one_chatMessage", message);
+          socket.broadcast.to(roomId).emit("one_one_chatMessage", message);
         }
       }
     });
