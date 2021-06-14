@@ -4,7 +4,11 @@ import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
-import userAccount from "./route/userAccount.js";
+import userAccount, {
+  updateChatList,
+  userIsOffLine,
+  userIsOnline,
+} from "./route/userAccount.js";
 import message from "./route/message.js";
 
 const app = express();
@@ -13,7 +17,7 @@ app.use(cors());
 dotenv.config();
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
+export const io = new Server(httpServer, {
   cors: true,
 });
 //
@@ -26,7 +30,44 @@ mongoose
     useCreateIndex: true,
     useFindAndModify: false,
   })
-  .then(() => console.log("database connection established"))
+  .then(() => {
+    console.log("database connected");
+    const connection = mongoose.connection;
+    io.on("connection", (socket) => {
+      let user = {};
+      socket.on("user-info", (userInfo) => {
+        user = userInfo;
+        userIsOnline(userInfo);
+        socket.broadcast.emit("user-status", { ...user, status: "active" });
+      });
+
+      updateChatList(socket);
+
+      socket.on("join", ({ roomId }) => {
+        socket.join(roomId);
+        let lastMessage = "";
+        const newMessage = connection.collection("one_one_messages").watch();
+        newMessage.on("change", (change) => {
+          if (change.operationType === "insert") {
+            const message = change.fullDocument;
+
+            if (message.id === roomId) {
+              if (message.message !== lastMessage) {
+                lastMessage = message.message;
+                socket.broadcast
+                  .to(roomId)
+                  .emit("one_one_chatMessage", message);
+              }
+            }
+          }
+        });
+      });
+      socket.on("disconnect", () => {
+        userIsOffLine(user);
+        io.emit("user-status", { ...user, status: "inactive" });
+      });
+    });
+  })
   .catch((err) => console.log(err));
 
 app.get("/", (req, res) => {
@@ -35,33 +76,6 @@ app.get("/", (req, res) => {
 
 app.use("/user/account", userAccount);
 app.use("/chatMessage", message);
-
-const connection = mongoose.connection;
-
-io.on("connection", (socket) => {
-  socket.on("join", ({ roomId }) => {
-    socket.join(roomId);
-    const newMessage = connection.collection("one_one_messages").watch();
-    newMessage.on("change", (change) => {
-      if (change.operationType === "insert") {
-        const message = change.fullDocument;
-        if (message.id === roomId) {
-          socket.broadcast.to(roomId).emit("one_one_chatMessage", message);
-        }
-      }
-    });
-
-    const newFriend = connection.collection("accounts").watch();
-    newFriend.on("change", (change) => {
-      console.log(change);
-
-      if (operationType === "update") {
-        console.log(updateDescription.updateFiles.chatList);
-      }
-    });
-    // socket.emit('message')
-  });
-});
 
 httpServer.listen(process.env.PORT || 5000, () =>
   console.log("Server is running")
