@@ -9,7 +9,7 @@ import userAccount, {
   userIsOffLine,
   userIsOnline,
 } from "./route/userAccount.js";
-import message from "./route/message.js";
+import message, { oneOneMessageFromSocket } from "./route/message.js";
 
 const app = express();
 app.use(express.json());
@@ -42,26 +42,8 @@ mongoose
       });
 
       updateChatList(socket);
+      oneOneMessageFromSocket(socket);
 
-      socket.on("join", ({ roomId }) => {
-        socket.join(roomId);
-        let lastMessage = "";
-        const newMessage = connection.collection("one_one_messages").watch();
-        newMessage.on("change", (change) => {
-          if (change.operationType === "insert") {
-            const message = change.fullDocument;
-
-            if (message.id === roomId) {
-              if (message.message !== lastMessage) {
-                lastMessage = message.message;
-                socket.broadcast
-                  .to(roomId)
-                  .emit("one_one_chatMessage", message);
-              }
-            }
-          }
-        });
-      });
       socket.on("disconnect", () => {
         userIsOffLine(user);
         io.emit("user-status", { ...user, status: "inactive" });
