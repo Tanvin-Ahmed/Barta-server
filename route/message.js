@@ -33,7 +33,7 @@ export const oneOneMessageFromSocket = (socket) => {
               sender: message.sender,
               timeStamp: message.timeStamp,
             };
-            socket.to(roomId).emit("one_one_chatMessage", message);
+            socket.emit("one_one_chatMessage", message);
           }
         }
       }
