@@ -39,6 +39,9 @@ export const oneOneMessageFromSocket = (socket) => {
       }
     });
   });
+  socket.on("typing", (info) => {
+    socket.broadcast.emit("displayTyping", info);
+  });
 };
 
 router.post("/postOneOneChat", (req, res) => {
