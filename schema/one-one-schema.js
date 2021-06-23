@@ -12,8 +12,8 @@ export const one_one_schema = new mongoose.Schema({
   message: {
     type: String,
   },
-  media: {
-    type: String,
+  file: {
+    type: Array,
   },
   timeStamp: {
     type: Date,
