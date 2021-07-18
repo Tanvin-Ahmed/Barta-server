@@ -10,11 +10,13 @@ import userAccount, {
   userIsOnline,
 } from "./route/userAccount.js";
 import message, { oneOneMessageFromSocket } from "./route/message.js";
+// import fileUpload from "express-fileupload";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 dotenv.config();
+// app.use(fileUpload());
 
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {
@@ -34,10 +36,10 @@ mongoose
   })
   .then(() => {
     console.log("database connected");
-    const connection = mongoose.connection;
     io.on("connection", (socket) => {
       let user = {};
       socket.on("user-info", (userInfo) => {
+        // socket.broadcast.emit("userIdForVideoChat", userInfo?.email);
         user = userInfo;
         userIsOnline(userInfo);
         socket.broadcast.emit("user-status", { ...user, status: "active" });
@@ -45,6 +47,15 @@ mongoose
 
       updateChatList(socket);
       oneOneMessageFromSocket(socket);
+
+      // private video call
+      socket.on("callUser", (data) => {
+        io.emit("callUser", data);
+      });
+
+      socket.on("answerCall", (data) => {
+        io.emit("callAccepted", data);
+      });
 
       socket.on("disconnect", () => {
         userIsOffLine(user);

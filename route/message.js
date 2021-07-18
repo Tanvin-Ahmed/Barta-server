@@ -96,6 +96,7 @@ mongoose.connection.once("open", () => {
   gfs = Grid(mongoose.connection.db, mongoose.mongo);
   gfs.collection(`${process.env.ONE_ONE_CHAT_COLLECTION}`);
   // gfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+  //   chunkSizeBytes: 1024,
   //   bucketName: `${process.env.ONE_ONE_CHAT_COLLECTION}`,
   // });
 });
@@ -130,10 +131,15 @@ router.post("/upload", upload.array("file", 15), (req, res) => {
     }
   });
 });
-
 router.get("/file/:filename", (req, res) => {
+  res.set({
+    "Accept-Ranges": "bytes",
+    "Content-Disposition": `attachment; filename=${req.params.filename}`,
+    // "Content-Type": "application/octet-stream",
+  });
   gfs.files.findOne({ filename: req.params.filename }, (err, file) => {
     if (err) {
+      console.log(err);
       return res.status(404).send(err.message);
     } else {
       return gfs.createReadStream(file.filename).pipe(res);
