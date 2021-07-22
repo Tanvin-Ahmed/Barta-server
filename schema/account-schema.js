@@ -11,23 +11,23 @@ export const account_schema = new mongoose.Schema({
   },
   photoURL: {
     type: String,
-    required: true,
+    // required: true,
   },
   chatList: {
     type: Array,
     default: [],
-    required: true,
+    // required: true,
   },
   status: {
     type: String,
-    required: true,
+    // required: true,
   },
   goOffLine: {
     type: Date,
-    required: true,
+    // required: true,
   },
   timeStamp: {
     type: Date,
-    required: true,
+    // required: true,
   },
 });

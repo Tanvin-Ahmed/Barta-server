@@ -57,6 +57,10 @@ mongoose
         io.emit("callAccepted", data);
       });
 
+      socket.on("cutCall", (data) => {
+        io.emit("callEnded", data.to);
+      });
+
       socket.on("disconnect", () => {
         userIsOffLine(user);
         io.emit("user-status", { ...user, status: "inactive" });

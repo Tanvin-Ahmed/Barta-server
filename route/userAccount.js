@@ -163,14 +163,14 @@ router.post("/", (req, res) => {
       return res.status(404).send(err.message);
     } else {
       if (account[0]) {
-        return res.status(200).send("Login Successfully");
+        return res.status(200).send(account[0]);
       } else {
         const newAccount = new Account(req.body);
         newAccount.save((err, result) => {
           if (err) {
             return res.status(500).send(err.message);
           } else {
-            return res.status(201).send(result.insertCount > 0);
+            return res.status(201).send(result);
           }
         });
       }
