@@ -57,6 +57,10 @@ mongoose
         io.emit("callAccepted", data);
       });
 
+      socket.on("call-reach-to-me", (to) => {
+        io.emit("call-reach-to-user", to);
+      });
+
       socket.on("cutCall", (data) => {
         io.emit("callEnded", data.to);
       });
