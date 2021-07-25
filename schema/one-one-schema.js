@@ -9,6 +9,10 @@ export const one_one_schema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  //for call
+  receiver: {
+    type: String,
+  },
   message: {
     type: String,
   },
@@ -16,6 +20,13 @@ export const one_one_schema = new mongoose.Schema({
     type: Array,
   },
   react: {
+    type: String,
+  },
+  // for call
+  callDuration: {
+    type: Object,
+  },
+  callDescription: {
     type: String,
   },
   timeStamp: {

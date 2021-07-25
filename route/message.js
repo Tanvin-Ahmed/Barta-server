@@ -174,6 +174,17 @@ router.post("/postOneOneChat", (req, res) => {
   });
 });
 
+router.post("/postCallInfo", (req, res) => {
+  const callInfo = new OneOneChat(req.body);
+  callInfo.save((err, result) => {
+    if (err) {
+      return res.status(500).send(err);
+    } else {
+      return res.status(200).send(result.insertCount > 0);
+    }
+  });
+});
+
 router.get("/getOneOneChat/:roomId", (req, res) => {
   OneOneChat.find({ id: req.params.roomId }, (err, docs) => {
     if (err) {
