@@ -20,7 +20,7 @@ export const one_one_schema = new mongoose.Schema({
     type: Array,
   },
   react: {
-    type: String,
+    type: Array,
   },
   // for call
   callDuration: {

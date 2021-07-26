@@ -47,9 +47,11 @@ export const oneOneMessageFromSocket = (socket) => {
       } else if (change.operationType === "update") {
         if (change.documentKey !== updatedMessageId) {
           updatedMessageId = change.documentKey;
-
-          const react = change?.updateDescription?.updatedFields?.react;
-          socket.emit("update-react", { _id: change?.documentKey?._id, react });
+          const updateFiled = change?.updateDescription?.updatedFields;
+          socket.emit("update-react", {
+            _id: change?.documentKey?._id,
+            react: updateFiled?.react?.length ? updateFiled.react : updateFiled,
+          });
         }
       } else if (change.operationType === "delete") {
         if (deletedId !== change?.documentKey?._id) {
@@ -116,7 +118,7 @@ router.post("/upload", upload.array("file", 15), (req, res) => {
     id: req.body.id,
     sender: req.body.sender,
     files,
-    react: "",
+    react: [],
     timeStamp: req.body.timeStamp,
   };
 
@@ -196,10 +198,42 @@ router.get("/getOneOneChat/:roomId", (req, res) => {
 });
 
 router.put("/updateChatMessage", (req, res) => {
-  OneOneChat.updateOne(
+  OneOneChat.findOneAndUpdate(
     { _id: req.body.id },
     {
-      $set: { react: req.body.react },
+      $addToSet: { react: req.body.reactInfo },
+    },
+    (err, result) => {
+      if (err) {
+        return res.status(404).send(err);
+      } else {
+        return res.status(200).send(result);
+      }
+    }
+  );
+});
+
+router.put("/updateOnlyReact", (req, res) => {
+  OneOneChat.findOneAndUpdate(
+    { _id: req.body.id, "react.sender": req.body.sender },
+    {
+      $set: { "react.$.react": req.body.react },
+    },
+    (err, result) => {
+      if (err) {
+        return res.status(404).send(err);
+      } else {
+        return res.status(200).send(result);
+      }
+    }
+  );
+});
+
+router.put("/removeReact", (req, res) => {
+  OneOneChat.findOneAndUpdate(
+    { _id: req.body.id },
+    {
+      $pull: { react: { sender: req.body.sender } },
     },
     (err, result) => {
       if (err) {
