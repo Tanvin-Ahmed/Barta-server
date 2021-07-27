@@ -50,7 +50,8 @@ export const oneOneMessageFromSocket = (socket) => {
           const updateFiled = change?.updateDescription?.updatedFields;
           socket.emit("update-react", {
             _id: change?.documentKey?._id,
-            react: updateFiled?.react?.length ? updateFiled.react : updateFiled,
+            react:
+              updateFiled?.react?.length >= 0 ? updateFiled.react : updateFiled,
           });
         }
       } else if (change.operationType === "delete") {
