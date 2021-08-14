@@ -20,7 +20,10 @@ dotenv.config();
 
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {
-  cors: true,
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+  },
 });
 //
 // data base
@@ -39,13 +42,12 @@ mongoose
     io.on("connection", (socket) => {
       let user = {};
       socket.on("user-info", (userInfo) => {
-        // socket.broadcast.emit("userIdForVideoChat", userInfo?.email);
         user = userInfo;
         userIsOnline(userInfo);
         socket.broadcast.emit("user-status", { ...user, status: "active" });
       });
 
-      updateChatList(socket);
+      updateChatList(socket, user?.email);
       oneOneMessageFromSocket(socket);
 
       // private video call

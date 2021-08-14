@@ -22,37 +22,30 @@ export const userIsOnline = (user) => {
       },
       (err, update) => {
         if (err) {
-          return console.log(err);
+          console.log(err.message);
+          return err;
         } else {
-          return console.log(update.ok);
+          return update.ok;
         }
       }
     );
   }
 };
 
-export const updateChatList = (socket) => {
-  socket.on("my-account", (userId) => {
-    socket.join(userId);
-    const newFriend = mongoose.connection.collection("accounts").watch();
-    newFriend.on("change", (change) => {
-      // console.log(change);
+export const updateChatList = (socket, user) => {
+  const userId = user?.split("@")[0];
 
-      if (change.operationType === "update") {
-        const updateFiled = change?.updateDescription?.updatedFields;
-        if (updateFiled?.chatList) {
-          let email = "";
-          const id = updateFiled?.chatList[updateFiled?.chatList?.length - 1];
-          if (id?.friendOf === userId) {
-            if (id?.email !== email) {
-              email = id?.email;
-              // console.log(id);
-              socket.emit("add-friend-list", { email: id?.email });
-            }
-          }
+  const newFriend = mongoose.connection.collection("accounts").watch();
+  newFriend.on("change", (change) => {
+    if (change.operationType === "update") {
+      const updateFiled = change?.updateDescription?.updatedFields;
+      if (updateFiled?.chatList) {
+        const id = updateFiled?.chatList[updateFiled?.chatList?.length - 1];
+        if (id?.friendOf === userId) {
+          socket.emit("add-friend-list", { email: id?.email });
         }
       }
-    });
+    }
   });
 };
 
@@ -68,9 +61,9 @@ export const userIsOffLine = (user) => {
       },
       (err, update) => {
         if (err) {
-          return console.log(err);
+          return err;
         } else {
-          return console.log(update.ok);
+          return update.ok;
         }
       }
     );
@@ -82,18 +75,19 @@ router.get("/:email", (req, res) => {
     if (err) {
       return res.status(404).send(err.message);
     } else {
-      const returnUsersInfo = (friend) => {
-        return res.status(200).send(friend);
+      const returnUsersInfo = (friends) => {
+        return res.status(200).send(friends);
       };
       const friend = [];
       userAccount[0]?.chatList?.forEach((chat) => {
-        Account.find({ email: chat.email }, (err, account) => {
+        Account.findOne({ email: chat.email }, (err, account) => {
           if (err) {
             return res.status(404).send(err.message);
           } else {
-            friend.push(account[0]);
+            friend.push(account);
             if (userAccount[0]?.chatList?.length === friend?.length) {
-              returnUsersInfo(friend);
+              const friends = friend.reverse();
+              returnUsersInfo(friends);
             }
           }
         });

@@ -6,7 +6,6 @@ import multer from "multer";
 import { GridFsStorage } from "multer-gridfs-storage";
 import Grid from "gridfs-stream";
 import path from "path";
-import crypto from "crypto";
 
 dotenv.config();
 
@@ -17,12 +16,9 @@ const OneOneChat = mongoose.model(
   one_one_schema
 );
 
-let lastMessage = {};
-let updatedMessageId = "";
-let deletedId = "";
 export const oneOneMessageFromSocket = (socket) => {
   socket.on("join", ({ roomId }) => {
-    socket.join(roomId);
+    // socket.join(roomId);
     const newMessage = mongoose.connection
       .collection("one_one_messages")
       .watch();
@@ -32,33 +28,17 @@ export const oneOneMessageFromSocket = (socket) => {
         const message = change.fullDocument;
 
         if (message.id === roomId) {
-          if (
-            message.sender !== lastMessage?.sender ||
-            (message.sender === lastMessage?.sender &&
-              message.timeStamp !== lastMessage?.timeStamp)
-          ) {
-            lastMessage = {
-              sender: message.sender,
-              timeStamp: message.timeStamp,
-            };
-            socket.emit("one_one_chatMessage", message);
-          }
+          socket.emit("one_one_chatMessage", message);
         }
       } else if (change.operationType === "update") {
-        if (change.documentKey !== updatedMessageId) {
-          updatedMessageId = change.documentKey;
-          const updateFiled = change?.updateDescription?.updatedFields;
-          socket.emit("update-react", {
-            _id: change?.documentKey?._id,
-            react:
-              updateFiled?.react?.length >= 0 ? updateFiled.react : updateFiled,
-          });
-        }
+        const updateFiled = change?.updateDescription?.updatedFields;
+        socket.emit("update-react", {
+          _id: change?.documentKey?._id,
+          react:
+            updateFiled?.react?.length >= 0 ? updateFiled.react : updateFiled,
+        });
       } else if (change.operationType === "delete") {
-        if (deletedId !== change?.documentKey?._id) {
-          deletedId = change?.documentKey?._id;
-          socket.emit("delete-chatMessage", { _id: change?.documentKey?._id });
-        }
+        socket.emit("delete-chatMessage", { _id: change?.documentKey?._id });
       }
     });
   });
@@ -74,19 +54,15 @@ const storage = new GridFsStorage({
   options: { useNewUrlParser: true, useUnifiedTopology: true },
   file: (req, file) => {
     return new Promise((resolve, reject) => {
-      // encrypt filename before storing file
-      crypto.randomBytes(16, (err, buf) => {
-        if (err) {
-          return reject(err);
-        }
-
-        const filename = buf.toString("hex") + path.extname(file.originalname);
-        const fileInfo = {
-          filename,
-          bucketName: `${process.env.ONE_ONE_CHAT_COLLECTION}`,
-        };
-        resolve(fileInfo);
-      });
+      if (!file.originalname) return reject(new Error("Upload failed"));
+      const fileExt = path.extname(file.originalname);
+      const filename =
+        file.originalname.replace(fileExt, "") + "_" + Date.now() + fileExt;
+      const fileInfo = {
+        filename,
+        bucketName: `${process.env.ONE_ONE_CHAT_COLLECTION}`,
+      };
+      resolve(fileInfo);
     });
   },
 });
@@ -135,17 +111,20 @@ router.post("/upload", upload.array("file", 15), (req, res) => {
   });
 });
 router.get("/file/:filename", (req, res) => {
-  res.set({
-    "Accept-Ranges": "bytes",
-    "Content-Disposition": `attachment; filename=${req.params.filename}`,
-    // "Content-Type": "application/octet-stream",
-  });
   gfs.files.findOne({ filename: req.params.filename }, (err, file) => {
     if (err) {
-      console.log(err);
       return res.status(404).send(err.message);
     } else {
-      return gfs.createReadStream(file.filename).pipe(res);
+      res.set({
+        "Accept-Ranges": "bytes",
+        "Content-Disposition": `attachment; filename=${req.params.filename}`,
+        // "Content-Type": "application/octet-stream",
+      });
+      const readStream = gfs.createReadStream(file.filename);
+      readStream.on("error", (err) => {
+        return res.status(404).send(err.message);
+      });
+      return readStream.pipe(res);
     }
   });
 });
@@ -188,14 +167,19 @@ router.post("/postCallInfo", (req, res) => {
   });
 });
 
-router.get("/getOneOneChat/:roomId", (req, res) => {
-  OneOneChat.find({ id: req.params.roomId }, (err, docs) => {
-    if (err) {
-      return res.status(404).send(err);
-    } else {
+router.post("/getOneOneChat/:roomId", (req, res) => {
+  const itemsPerPage = 9;
+  const pageNum = parseInt(req.body.pageNum, 10);
+  OneOneChat.find({ id: req.params.roomId })
+    .sort({ _id: -1 })
+    .skip(itemsPerPage * (pageNum - 1))
+    .limit(itemsPerPage)
+    .then((docs) => {
       return res.status(200).send(docs);
-    }
-  });
+    })
+    .catch((err) => {
+      return res.status(404).send(err);
+    });
 });
 
 router.put("/updateChatMessage", (req, res) => {
@@ -247,7 +231,6 @@ router.put("/removeReact", (req, res) => {
 });
 
 router.delete("/deleteChatMessage/:id", (req, res) => {
-  console.log(req.params.id);
   OneOneChat.deleteOne({ _id: req.params.id }, (err, result) => {
     if (err) {
       return res.status(404).send(err);
