@@ -18,9 +18,14 @@ export const account_schema = new mongoose.Schema({
     default: [],
     // required: true,
   },
+  groups: {
+    type: Array,
+    default: [],
+    // required: true,
+  },
   status: {
     type: String,
-    // required: true,
+    required: true,
   },
   goOffLine: {
     type: Date,
@@ -28,6 +33,6 @@ export const account_schema = new mongoose.Schema({
   },
   timeStamp: {
     type: Date,
-    // required: true,
+    required: true,
   },
 });

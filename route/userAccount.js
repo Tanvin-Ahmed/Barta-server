@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { account_schema } from "../schema/account-schema";
+import { groupAccountSchema } from "../schema/group-account-schema";
 
 dotenv.config();
 
@@ -41,8 +42,13 @@ export const updateChatList = (socket, user) => {
       const updateFiled = change?.updateDescription?.updatedFields;
       if (updateFiled?.chatList) {
         const id = updateFiled?.chatList[updateFiled?.chatList?.length - 1];
-        if (id?.friendOf === userId) {
-          socket.emit("add-friend-list", { email: id?.email });
+        if (userId === id?.friendOf) {
+          socket.emit("add-friend-list", id?.email);
+        }
+      } else if (updateFiled?.groups) {
+        const id = updateFiled?.groups[updateFiled?.groups?.length - 1];
+        if (userId === id?.member) {
+          socket.emit("add-group-list", id?.groupName);
         }
       }
     }
@@ -179,6 +185,54 @@ router.put("/updateChatList/:email", (req, res) => {
   Account.updateOne(
     { email },
     { $addToSet: { chatList: friendsInfo } },
+    (err, data) => {
+      if (err) {
+        return res.status(500).send(err.message);
+      } else {
+        return res.status(201).send(data);
+      }
+    }
+  );
+});
+
+///////////// group list //////////////
+const GroupAccount = mongoose.model(
+  `${process.env.GROUP_CHAT_ACCOUNT_COLLECTION}`,
+  groupAccountSchema
+);
+
+router.get("/groupList/:email", (req, res) => {
+  Account.find({ email: req.params.email }, (err, userAccount) => {
+    if (err) {
+      return res.status(404).send(err.message);
+    } else {
+      const returnUsersInfo = (allGroup) => {
+        return res.status(200).send(allGroup);
+      };
+      const groupList = [];
+      userAccount[0]?.groups?.forEach((group) => {
+        GroupAccount.findOne({ groupName: group.groupName }, (err, account) => {
+          if (err) {
+            return res.status(404).send(err.message);
+          } else {
+            groupList.push(account);
+            if (userAccount[0]?.groups?.length === groupList?.length) {
+              const allGroup = groupList.reverse();
+              returnUsersInfo(allGroup);
+            }
+          }
+        });
+      });
+    }
+  });
+});
+
+router.put("/updateGroupList/:email", (req, res) => {
+  const email = req.params.email;
+  const groupInfo = req.body;
+  Account.updateOne(
+    { email },
+    { $addToSet: { groups: groupInfo } },
     (err, data) => {
       if (err) {
         return res.status(500).send(err.message);

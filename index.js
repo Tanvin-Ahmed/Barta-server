@@ -10,7 +10,8 @@ import userAccount, {
   userIsOnline,
 } from "./route/userAccount.js";
 import message, { oneOneMessageFromSocket } from "./route/message.js";
-// import fileUpload from "express-fileupload";
+import groupAccount from "./route/groupAccount.js";
+import groupMessage from "./route/groupMessage.js";
 
 const app = express();
 app.use(express.json());
@@ -48,7 +49,9 @@ mongoose
       });
 
       updateChatList(socket, user?.email);
-      oneOneMessageFromSocket(socket);
+      socket.on("join", ({ roomId }) => {
+        oneOneMessageFromSocket(socket, roomId);
+      });
 
       // private video call
       socket.on("callUser", (data) => {
@@ -81,6 +84,8 @@ app.get("/", (req, res) => {
 
 app.use("/user/account", userAccount);
 app.use("/chatMessage", message);
+app.use("/groupAccount", groupAccount);
+app.use("/groupChat", groupMessage);
 
 httpServer.listen(process.env.PORT || 5000, () =>
   console.log("Server is running")

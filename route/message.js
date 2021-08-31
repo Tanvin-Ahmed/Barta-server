@@ -16,31 +16,26 @@ const OneOneChat = mongoose.model(
   one_one_schema
 );
 
-export const oneOneMessageFromSocket = (socket) => {
-  socket.on("join", ({ roomId }) => {
-    // socket.join(roomId);
-    const newMessage = mongoose.connection
-      .collection("one_one_messages")
-      .watch();
-    newMessage.on("change", (change) => {
-      // console.log(change);
-      if (change.operationType === "insert") {
-        const message = change.fullDocument;
+export const oneOneMessageFromSocket = (socket, roomId) => {
+  const newMessage = mongoose.connection.collection("one_one_messages").watch();
+  newMessage.on("change", (change) => {
+    // console.log(change);
+    if (change.operationType === "insert") {
+      const message = change.fullDocument;
 
-        if (message.id === roomId) {
-          socket.emit("one_one_chatMessage", message);
-        }
-      } else if (change.operationType === "update") {
-        const updateFiled = change?.updateDescription?.updatedFields;
-        socket.emit("update-react", {
-          _id: change?.documentKey?._id,
-          react:
-            updateFiled?.react?.length >= 0 ? updateFiled.react : updateFiled,
-        });
-      } else if (change.operationType === "delete") {
-        socket.emit("delete-chatMessage", { _id: change?.documentKey?._id });
+      if (message.id === roomId) {
+        socket.emit("one_one_chatMessage", message);
       }
-    });
+    } else if (change.operationType === "update") {
+      const updateFiled = change?.updateDescription?.updatedFields;
+      socket.emit("update-react", {
+        _id: change?.documentKey?._id,
+        react:
+          updateFiled?.react?.length >= 0 ? updateFiled.react : updateFiled,
+      });
+    } else if (change.operationType === "delete") {
+      socket.emit("delete-chatMessage", { _id: change?.documentKey?._id });
+    }
   });
   socket.on("typing", (info) => {
     socket.broadcast.emit("displayTyping", info);

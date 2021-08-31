@@ -1,20 +1,36 @@
 import mongoose from "mongoose";
 
 export const group_chat_schema = new mongoose.Schema({
-    room: {
-        type: String,
-        required: true
-    },
-    senderName: {
-        type: String,
-        required: true
-    },
-    message: {
-        type: String,
-        required: true
-    },
-    timeStamp: {
-        type: Date,
-        required: true
-    }
-})
+  id: {
+    type: String,
+    required: true,
+  },
+  sender: {
+    type: String,
+    required: true,
+  },
+  //for call
+  receiver: {
+    type: String,
+  },
+  message: {
+    type: String,
+  },
+  files: {
+    type: Array,
+  },
+  react: {
+    type: Array,
+  },
+  // for call
+  callDuration: {
+    type: Object,
+  },
+  callDescription: {
+    type: String,
+  },
+  timeStamp: {
+    type: Date,
+    required: true,
+  },
+});
