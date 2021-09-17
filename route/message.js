@@ -2,10 +2,8 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { one_one_schema } from "../schema/one-one-schema";
-import multer from "multer";
-import { GridFsStorage } from "multer-gridfs-storage";
 import Grid from "gridfs-stream";
-import path from "path";
+import { upload } from "../FileUpload/FileUpload";
 
 dotenv.config();
 
@@ -24,7 +22,7 @@ export const oneOneMessageFromSocket = (socket, roomId) => {
       const message = change.fullDocument;
 
       if (message.id === roomId) {
-        socket.emit("one_one_chatMessage", message);
+        socket.emit("new-message", message);
       }
     } else if (change.operationType === "update") {
       const updateFiled = change?.updateDescription?.updatedFields;
@@ -42,37 +40,10 @@ export const oneOneMessageFromSocket = (socket, roomId) => {
   });
 };
 
-const uri = `mongodb://${process.env.USER_NAME}:${process.env.USER_PASSWORD}@cluster0-shard-00-00.zhub4.mongodb.net:27017,cluster0-shard-00-01.zhub4.mongodb.net:27017,cluster0-shard-00-02.zhub4.mongodb.net:27017/${process.env.DATABASE_NAME}?ssl=true&replicaSet=atlas-5oevi0-shard-0&authSource=admin&retryWrites=true&w=majority`;
-// create storage engin
-const storage = new GridFsStorage({
-  url: uri,
-  options: { useNewUrlParser: true, useUnifiedTopology: true },
-  file: (req, file) => {
-    return new Promise((resolve, reject) => {
-      if (!file.originalname) return reject(new Error("Upload failed"));
-      const fileExt = path.extname(file.originalname);
-      const filename =
-        file.originalname.replace(fileExt, "") + "_" + Date.now() + fileExt;
-      const fileInfo = {
-        filename,
-        bucketName: `${process.env.ONE_ONE_CHAT_COLLECTION}`,
-      };
-      resolve(fileInfo);
-    });
-  },
-});
-
-const upload = multer({ storage });
-
 let gfs;
 mongoose.connection.once("open", () => {
-  //   console.log("connection open");
   gfs = Grid(mongoose.connection.db, mongoose.mongo);
   gfs.collection(`${process.env.ONE_ONE_CHAT_COLLECTION}`);
-  // gfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-  //   chunkSizeBytes: 1024,
-  //   bucketName: `${process.env.ONE_ONE_CHAT_COLLECTION}`,
-  // });
 });
 
 router.post("/upload", upload.array("file", 15), (req, res) => {
@@ -157,7 +128,7 @@ router.post("/postCallInfo", (req, res) => {
     if (err) {
       return res.status(500).send(err);
     } else {
-      return res.status(200).send(result.insertCount > 0);
+      return res.status(201).send(result.insertCount > 0);
     }
   });
 });

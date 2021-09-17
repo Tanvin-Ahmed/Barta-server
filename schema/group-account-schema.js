@@ -8,6 +8,11 @@ export const groupAccountSchema = new mongoose.Schema({
   photoURL: {
     type: String,
   },
+  members: {
+    type: Array,
+    default: [],
+    required: true,
+  },
   status: {
     type: String,
     required: true,

@@ -11,7 +11,7 @@ import userAccount, {
 } from "./route/userAccount.js";
 import message, { oneOneMessageFromSocket } from "./route/message.js";
 import groupAccount from "./route/groupAccount.js";
-import groupMessage from "./route/groupMessage.js";
+import groupMessage, { groupChatFromSocket } from "./route/groupMessage.js";
 
 const app = express();
 app.use(express.json());
@@ -28,8 +28,11 @@ export const io = new Server(httpServer, {
 });
 //
 // data base
-
 const uri = `mongodb://${process.env.USER_NAME}:${process.env.USER_PASSWORD}@cluster0-shard-00-00.zhub4.mongodb.net:27017,cluster0-shard-00-01.zhub4.mongodb.net:27017,cluster0-shard-00-02.zhub4.mongodb.net:27017/${process.env.DATABASE_NAME}?ssl=true&replicaSet=atlas-5oevi0-shard-0&authSource=admin&retryWrites=true&w=majority`;
+
+const users = {};
+const socketToRoom = {};
+let user = {};
 
 mongoose
   .connect(uri, {
@@ -41,19 +44,19 @@ mongoose
   .then(() => {
     console.log("database connected");
     io.on("connection", (socket) => {
-      let user = {};
       socket.on("user-info", (userInfo) => {
         user = userInfo;
+        updateChatList(socket, userInfo?.email);
         userIsOnline(userInfo);
         socket.broadcast.emit("user-status", { ...user, status: "active" });
       });
 
-      updateChatList(socket, user?.email);
       socket.on("join", ({ roomId }) => {
+        groupChatFromSocket(socket, roomId);
         oneOneMessageFromSocket(socket, roomId);
       });
 
-      // private video call
+      // private call
       socket.on("callUser", (data) => {
         io.emit("callUser", data);
       });
@@ -70,7 +73,79 @@ mongoose
         io.emit("callEnded", data.to);
       });
 
+      // group call
+      socket.on(
+        "members to call",
+        ({ members, callerID, callerName, roomID, callType }) => {
+          members.forEach((member) => {
+            socket.broadcast.emit("group call for you", {
+              callerID,
+              callerName,
+              member,
+              roomID,
+              callType,
+            });
+          });
+        }
+      );
+      socket.on("join room", ({ roomID, userID, userName }) => {
+        if (users[roomID]) {
+          users[roomID].push({ id: userID, name: userName });
+        } else {
+          users[roomID] = [{ id: userID, name: userName }];
+        }
+        socketToRoom[userID] = roomID;
+        const usersInThisRoom = users[roomID].filter(({ id }) => id !== userID);
+        socket.emit("all users", { usersInThisRoom, roomID });
+      });
+
+      socket.on(
+        "sending signal",
+        ({ roomID, userToSignal, callerID, callerName, signal }) => {
+          io.emit("user joined", {
+            roomID,
+            callerID,
+            callerName,
+            userToSignal,
+            signal,
+          });
+        }
+      );
+
+      socket.on("returning signal", (payload) => {
+        io.emit("receiving returned signal", {
+          signal: payload.signal,
+          id: payload.userID,
+          roomID: payload.roomID,
+          callerID: payload.callerID,
+        });
+      });
+
+      socket.on("cut call", (userID) => {
+        const roomID = socketToRoom[userID];
+        let room = users[roomID];
+        if (room) {
+          room = room.filter(({ id }) => id !== userID);
+          users[roomID] = room;
+          socket.broadcast.emit("user left", userID);
+        }
+      });
+
+      // disconnect
       socket.on("disconnect", () => {
+        // private call
+        // io.emit("callEnded", data.to);
+
+        // group call
+        const roomID = socketToRoom[user?.email];
+        let room = users[roomID];
+        if (room) {
+          room = room.filter(({ id }) => id !== user?.email);
+          users[roomID] = room;
+          socket.broadcast.emit("user left", user?.email);
+        }
+
+        // update user status
         userIsOffLine(user);
         io.emit("user-status", { ...user, status: "inactive" });
       });

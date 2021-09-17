@@ -202,27 +202,34 @@ const GroupAccount = mongoose.model(
 );
 
 router.get("/groupList/:email", (req, res) => {
-  Account.find({ email: req.params.email }, (err, userAccount) => {
+  Account.findOne({ email: req.params.email }, (err, userAccount) => {
     if (err) {
       return res.status(404).send(err.message);
     } else {
-      const returnUsersInfo = (allGroup) => {
-        return res.status(200).send(allGroup);
-      };
-      const groupList = [];
-      userAccount[0]?.groups?.forEach((group) => {
-        GroupAccount.findOne({ groupName: group.groupName }, (err, account) => {
-          if (err) {
-            return res.status(404).send(err.message);
-          } else {
-            groupList.push(account);
-            if (userAccount[0]?.groups?.length === groupList?.length) {
-              const allGroup = groupList.reverse();
-              returnUsersInfo(allGroup);
+      if (!userAccount?.groups.length) {
+        return res.status(200).send(userAccount?.groups);
+      } else {
+        const returnUsersInfo = (allGroup) => {
+          return res.status(200).send(allGroup);
+        };
+        const groupList = [];
+        userAccount?.groups?.forEach((group) => {
+          GroupAccount.findOne(
+            { groupName: group.groupName },
+            (err, account) => {
+              if (err) {
+                return res.status(404).send(err.message);
+              } else {
+                groupList.push(account);
+                if (userAccount?.groups?.length === groupList?.length) {
+                  const allGroup = groupList.reverse();
+                  returnUsersInfo(allGroup);
+                }
+              }
             }
-          }
+          );
         });
-      });
+      }
     }
   });
 });
