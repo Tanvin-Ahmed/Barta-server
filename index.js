@@ -97,6 +97,7 @@ mongoose
         socketToRoom[userID] = roomID;
         const usersInThisRoom = users[roomID].filter(({ id }) => id !== userID);
         socket.emit("all users", { usersInThisRoom, roomID });
+        socket.emit("total user", { usersInThisRoom, roomID });
       });
 
       socket.on(
@@ -128,7 +129,16 @@ mongoose
           room = room.filter(({ id }) => id !== userID);
           users[roomID] = room;
           socket.broadcast.emit("user left", userID);
+          if (room.length === 0) {
+            const usersInThisRoom = room;
+            socket.emit("total user", { usersInThisRoom, roomID });
+          }
         }
+      });
+
+      socket.on("is user present in group call", (roomID) => {
+        const usersInThisRoom = users[roomID];
+        socket.emit("total user", { usersInThisRoom, roomID });
       });
 
       // disconnect
@@ -143,6 +153,10 @@ mongoose
           room = room.filter(({ id }) => id !== user?.email);
           users[roomID] = room;
           socket.broadcast.emit("user left", user?.email);
+          if (room.length === 0) {
+            const usersInThisRoom = room;
+            socket.emit("total user", { usersInThisRoom, roomID });
+          }
         }
 
         // update user status
