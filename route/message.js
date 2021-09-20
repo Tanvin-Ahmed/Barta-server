@@ -134,7 +134,7 @@ router.post("/postCallInfo", (req, res) => {
 });
 
 router.post("/getOneOneChat/:roomId", (req, res) => {
-  const itemsPerPage = 9;
+  const itemsPerPage = 35;
   const pageNum = parseInt(req.body.pageNum, 10);
   OneOneChat.find({ id: req.params.roomId })
     .sort({ _id: -1 })

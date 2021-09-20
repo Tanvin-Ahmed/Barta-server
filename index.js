@@ -136,10 +136,13 @@ mongoose
         }
       });
 
-      socket.on("is user present in group call", (roomID) => {
-        const usersInThisRoom = users[roomID];
-        socket.emit("total user", { usersInThisRoom, roomID });
-      });
+      // get group call info after reloading
+      // socket.on("after reload get user data of group call", (roomID) => {
+      //   if (users[roomID].length) {
+      //     const usersInThisRoom = users[roomID];
+      //     socket.emit("total user", { usersInThisRoom, roomID });
+      //   }
+      // });
 
       // disconnect
       socket.on("disconnect", () => {
