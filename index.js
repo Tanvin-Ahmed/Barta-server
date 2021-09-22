@@ -45,10 +45,10 @@ mongoose
     console.log("database connected");
     io.on("connection", (socket) => {
       socket.on("user-info", (userInfo) => {
-        user = userInfo;
-        updateChatList(socket, userInfo?.email);
-        userIsOnline(userInfo);
-        socket.broadcast.emit("user-status", { ...user, status: "active" });
+        user[socket.id] = userInfo.email;
+        updateChatList(socket, userInfo.email);
+        userIsOnline(userInfo.email);
+        socket.broadcast.emit("user-status", { ...userInfo, status: "active" });
       });
 
       socket.on("join", ({ roomId }) => {
@@ -150,12 +150,12 @@ mongoose
         // io.emit("callEnded", data.to);
 
         // group call
-        const roomID = socketToRoom[user?.email];
+        const roomID = socketToRoom[user[socket.id]];
         let room = users[roomID];
         if (room) {
-          room = room.filter(({ id }) => id !== user?.email);
+          room = room.filter(({ id }) => id !== user[socket.id]);
           users[roomID] = room;
-          socket.broadcast.emit("user left", user?.email);
+          socket.broadcast.emit("user left", user[socket.id]);
           if (room.length === 0) {
             const usersInThisRoom = room;
             socket.emit("total user", { usersInThisRoom, roomID });
@@ -163,8 +163,9 @@ mongoose
         }
 
         // update user status
-        userIsOffLine(user);
-        io.emit("user-status", { ...user, status: "inactive" });
+        userIsOffLine(user[socket.id]);
+        io.emit("user-status", { email: user[socket.id], status: "inactive" });
+        delete user[socket.id];
       });
     });
   })

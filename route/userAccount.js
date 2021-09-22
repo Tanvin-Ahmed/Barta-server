@@ -13,9 +13,9 @@ const Account = mongoose.model(
 );
 
 export const userIsOnline = (user) => {
-  if (user?.email) {
+  if (user) {
     Account.updateOne(
-      { email: user.email },
+      { email: user },
       {
         $set: {
           status: "active",
@@ -56,9 +56,9 @@ export const updateChatList = (socket, user) => {
 };
 
 export const userIsOffLine = (user) => {
-  if (user?.email) {
+  if (user) {
     Account.updateOne(
-      { email: user.email },
+      { email: user },
       {
         $set: {
           status: "inactive",
