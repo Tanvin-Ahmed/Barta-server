@@ -5,12 +5,17 @@ export const account_schema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  password: {
+    type: String,
+    required: true,
+  },
   displayName: {
     type: String,
     required: true,
   },
   photoURL: {
     type: String,
+    default: "",
     // required: true,
   },
   chatList: {
@@ -25,7 +30,6 @@ export const account_schema = new mongoose.Schema({
   },
   status: {
     type: String,
-    required: true,
   },
   goOffLine: {
     type: Date,
@@ -33,6 +37,5 @@ export const account_schema = new mongoose.Schema({
   },
   timeStamp: {
     type: Date,
-    required: true,
   },
 });

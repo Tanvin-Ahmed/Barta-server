@@ -12,6 +12,7 @@ import userAccount, {
 import message, { oneOneMessageFromSocket } from "./route/message.js";
 import groupAccount from "./route/groupAccount.js";
 import groupMessage, { groupChatFromSocket } from "./route/groupMessage.js";
+import generateNewToken from "./route/generateNewToken.js";
 
 const app = express();
 app.use(express.json());
@@ -58,7 +59,19 @@ mongoose
 
       // private call
       socket.on("callUser", (data) => {
+        // for (const u in user) {
+        //   if (user[u] === data.userToCall) {
         io.emit("callUser", data);
+        //   }
+        // }
+      });
+
+      socket.on("user status to receive this call", (data) => {
+        socket.broadcast.emit("call busy", data);
+      });
+
+      socket.on("receiver call you 1st", (to) => {
+        socket.broadcast.emit("receiver call you first", to);
       });
 
       socket.on("answerCall", (data) => {
@@ -175,10 +188,20 @@ app.get("/", (req, res) => {
   res.status(200).send(`<h1>Node.js</h1>`);
 });
 
+// error handler
+const errorHandler = (err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(400).send(err);
+};
+
 app.use("/user/account", userAccount);
 app.use("/chatMessage", message);
 app.use("/groupAccount", groupAccount);
 app.use("/groupChat", groupMessage);
+app.use("/jwt", generateNewToken);
+app.use(errorHandler);
 
 httpServer.listen(process.env.PORT || 5000, () =>
   console.log("Server is running")

@@ -3,7 +3,7 @@ import express from "express";
 import dotenv from "dotenv";
 import Grid from "gridfs-stream";
 import { group_chat_schema } from "../schema/group-chat-schema";
-import { upload } from "../FileUpload/FileUpload";
+import { uploadMiddleware } from "../FileUpload/FileUpload";
 dotenv.config();
 
 export const groupChatFromSocket = (socket, roomId) => {
@@ -43,7 +43,7 @@ mongoose.connection.once("open", () => {
   gfs.collection(`${process.env.GROUP_CHAT_COLLECTION}`);
 });
 
-router.post("/upload", upload.array("file", 15), (req, res) => {
+router.post("/upload", uploadMiddleware, (req, res) => {
   let files = [];
   for (let i = 0; i < req.files.length; i++) {
     const element = req.files[i];

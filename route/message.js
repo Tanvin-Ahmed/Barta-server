@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { one_one_schema } from "../schema/one-one-schema";
 import Grid from "gridfs-stream";
-import { upload } from "../FileUpload/FileUpload";
+import { uploadMiddleware } from "../FileUpload/FileUpload";
 
 dotenv.config();
 
@@ -42,11 +42,14 @@ export const oneOneMessageFromSocket = (socket, roomId) => {
 
 let gfs;
 mongoose.connection.once("open", () => {
-  gfs = Grid(mongoose.connection.db, mongoose.mongo);
-  gfs.collection(`${process.env.ONE_ONE_CHAT_COLLECTION}`);
+  // gfs = Grid(mongoose.connection.db, mongoose.mongo);
+  // gfs.collection(`${process.env.ONE_ONE_CHAT_COLLECTION}`);
+  gfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+    bucketName: `${process.env.ONE_ONE_CHAT_COLLECTION}`,
+  });
 });
 
-router.post("/upload", upload.array("file", 15), (req, res) => {
+router.post("/upload", uploadMiddleware, (req, res) => {
   let files = [];
   for (let i = 0; i < req.files.length; i++) {
     const element = req.files[i];
@@ -77,38 +80,41 @@ router.post("/upload", upload.array("file", 15), (req, res) => {
   });
 });
 router.get("/file/:filename", (req, res) => {
-  gfs.files.findOne({ filename: req.params.filename }, (err, file) => {
+  // const _id = mongoose.Types.ObjectId(req.params.id);
+  gfs.find({ filename: req.params.filename }).toArray((err, files) => {
     if (err) {
       return res.status(404).send(err.message);
     } else {
+      const contentType = files[0].contentType;
+      //setting response header
       res.set({
         "Accept-Ranges": "bytes",
-        "Content-Disposition": `attachment; filename=${req.params.filename}`,
-        // "Content-Type": "application/octet-stream",
+        // "Content-Disposition": `attachment; filename=${req.params.filename}`,
+        "Content-Type": `${contentType}`,
+        "Access-Control-Allow-Origin": "*",
       });
-      const readStream = gfs.createReadStream(file.filename);
-      readStream.on("error", (err) => {
+
+      if (!files || files.length === 0)
+        return res.status(400).send("file not exist");
+
+      const downloadStream = gfs.openDownloadStreamByName(req.params.filename);
+      downloadStream.on("error", (err) => {
         return res.status(404).send(err.message);
       });
-      return readStream.pipe(res);
+      return downloadStream.pipe(res);
     }
   });
 });
 
 router.delete("/file/delete/:id", (req, res) => {
-  gfs.remove(
-    {
-      _id: req.params.id,
-      root: `${process.env.ONE_ONE_CHAT_COLLECTION}`,
-    },
-    (err, gridStore) => {
-      if (err) {
-        return res.status(404).send(err.message);
-      } else {
-        return res.status(200).send("deleted successfully");
-      }
+  const _id = new mongoose.Types.ObjectId(req.params.id);
+  gfs.delete(_id, (err, gridStore) => {
+    if (err) {
+      return res.status(404).send(err.message);
+    } else {
+      return res.status(200).send("deleted successfully");
     }
-  );
+  });
 });
 
 router.post("/postOneOneChat", (req, res) => {

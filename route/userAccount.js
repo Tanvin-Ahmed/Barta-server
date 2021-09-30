@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { account_schema } from "../schema/account-schema";
 import { groupAccountSchema } from "../schema/group-account-schema";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
@@ -77,21 +79,24 @@ export const userIsOffLine = (user) => {
 };
 
 router.get("/:email", (req, res) => {
-  Account.find({ email: req.params.email }, (err, userAccount) => {
+  Account.findOne({ email: req.params.email }, (err, userAccount) => {
     if (err) {
       return res.status(404).send(err.message);
     } else {
+      if (userAccount.chatList.length === 0 || !userAccount.chatList[0])
+        return res.status(400).send("No friend available");
+
       const returnUsersInfo = (friends) => {
         return res.status(200).send(friends);
       };
       const friend = [];
-      userAccount[0]?.chatList?.forEach((chat) => {
+      userAccount?.chatList?.forEach((chat) => {
         Account.findOne({ email: chat.email }, (err, account) => {
           if (err) {
             return res.status(404).send(err.message);
           } else {
             friend.push(account);
-            if (userAccount[0]?.chatList?.length === friend?.length) {
+            if (userAccount?.chatList?.length === friend?.length) {
               const friends = friend.reverse();
               returnUsersInfo(friends);
             }
@@ -155,6 +160,73 @@ router.get("/allAccount/:searchString", (req, res) => {
       }
     }
   );
+});
+
+router.post("/sign-in", (req, res) => {
+  Account.findOne({ email: req.body.email }, (err, account) => {
+    if (err) return res.status(404).send(err.message);
+    if (account?.email === req.body.email)
+      return res.status(400).send("Email already registered");
+
+    bcrypt
+      .hash(req.body.password, 10)
+      .then((hashedPassword) => {
+        const newUser = new Account({
+          displayName: req.body.displayName,
+          email: req.body.email,
+          password: hashedPassword,
+          status: "active",
+          goOffLine: new Date().toUTCString(),
+          timeStamp: new Date().toUTCString(),
+        });
+        newUser.save((err, user) => {
+          if (err) return res.status(500).send("Sign In failed");
+
+          // generate token
+          const token = jwt.sign(
+            {
+              _id: user._id,
+              email: user.email,
+              displayName: user.displayName,
+              status: "active",
+            },
+            process.env.JWT_SECRET_KEY,
+            { expiresIn: "12h" }
+          );
+
+          return res.status(200).send(token);
+        });
+      })
+      .catch(() => res.status(400).send("Sing In failed"));
+  });
+});
+
+router.post("/login", (req, res) => {
+  Account.findOne({ email: req.body.email }, (err, account) => {
+    if (err) return res.status(404).send(err.message);
+    if (!account) return res.status(401).send("Authentication failed");
+
+    bcrypt
+      .compare(req.body.password, account.password)
+      .then((valid) => {
+        if (!valid) return res.status(400).send("Authentication failed");
+
+        // generate token
+        const token = jwt.sign(
+          {
+            _id: account._id,
+            email: account.email,
+            displayName: account.displayName,
+            status: "active",
+          },
+          process.env.JWT_SECRET_KEY,
+          { expiresIn: "12h" }
+        );
+
+        res.status(200).send(token);
+      })
+      .catch((err) => res.status(404).send(err.message));
+  });
 });
 
 router.post("/", (req, res) => {

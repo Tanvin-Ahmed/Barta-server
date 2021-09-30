@@ -11,8 +11,9 @@ const storage = new GridFsStorage({
     return new Promise((resolve, reject) => {
       if (!file.originalname) return reject(new Error("Upload failed"));
       const fileExt = path.extname(file.originalname);
-      const filename =
-        file.originalname.replace(fileExt, "") + "_" + Date.now() + fileExt;
+      let filename =
+        file.originalname.replace(fileExt, "") + "◉_◉" + Date.now() + fileExt;
+      filename = filename.split(" ").join("_");
       const fileInfo = {
         filename,
         bucketName: `${process.env.ONE_ONE_CHAT_COLLECTION}`,
@@ -22,4 +23,17 @@ const storage = new GridFsStorage({
   },
 });
 
-export const upload = multer({ storage });
+const store = multer({ storage, limits: { fileSize: 20000000 } });
+
+export const uploadMiddleware = (req, res, next) => {
+  const upload = store.array("file", 15);
+  upload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).send("File to large");
+    } else if (err) {
+      return res.status(500);
+    }
+    // all is good
+    next();
+  });
+};
