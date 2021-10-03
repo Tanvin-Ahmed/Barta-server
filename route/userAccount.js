@@ -5,6 +5,7 @@ import { account_schema } from "../schema/account-schema";
 import { groupAccountSchema } from "../schema/group-account-schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { profileUploadMiddleware } from "../FileUpload/ProfilePicUpload";
 
 dotenv.config();
 
@@ -178,8 +179,9 @@ router.post("/sign-in", (req, res) => {
           status: "active",
           goOffLine: new Date().toUTCString(),
           timeStamp: new Date().toUTCString(),
+          birthday: req.body.birthday,
         });
-        newUser.save((err, user) => {
+        newUser.save((err, account) => {
           if (err) return res.status(500).send("Sign In failed");
 
           // generate token
@@ -194,7 +196,25 @@ router.post("/sign-in", (req, res) => {
             { expiresIn: "12h" }
           );
 
-          return res.status(200).send(token);
+          const accountInfo = {
+            displayName: account.displayName,
+            email: account.email,
+            photoURL: account.photoURL,
+            photoId: account.photoId,
+            chatList: account.chatList,
+            groups: account.groups,
+            _id: account._id,
+            religion: account.religion,
+            gender: account.gender,
+            nationality: account.nationality,
+            birthday: account.birthday,
+            status: account.status,
+            goOffLine: account.goOffLine,
+            timeStamp: account.timeStamp,
+            relationshipStatus: account.relationshipStatus,
+          };
+
+          return res.status(200).send({ token, accountInfo });
         });
       })
       .catch(() => res.status(400).send("Sing In failed"));
@@ -223,9 +243,143 @@ router.post("/login", (req, res) => {
           { expiresIn: "12h" }
         );
 
-        res.status(200).send(token);
+        const accountInfo = {
+          displayName: account.displayName,
+          email: account.email,
+          photoURL: account.photoURL,
+          photoId: account.photoId,
+          chatList: account.chatList,
+          groups: account.groups,
+          _id: account._id,
+          religion: account.religion,
+          gender: account.gender,
+          nationality: account.nationality,
+          birthday: account.birthday,
+          status: account.status,
+          goOffLine: account.goOffLine,
+          timeStamp: account.timeStamp,
+          relationshipStatus: account.relationshipStatus,
+        };
+
+        res.status(200).send({ token, accountInfo });
       })
       .catch((err) => res.status(404).send(err.message));
+  });
+});
+
+router.get("/userInfo/:id", (req, res) => {
+  const _id = new mongoose.Types.ObjectId(req.params.id);
+  Account.findOne({ _id }, (err, account) => {
+    if (err) return res.status(404).send(err.message);
+
+    const accountInfo = {
+      displayName: account.displayName,
+      email: account.email,
+      photoURL: account.photoURL,
+      photoId: account.photoId,
+      chatList: account.chatList,
+      groups: account.groups,
+      _id: account._id,
+      religion: account.religion,
+      gender: account.gender,
+      nationality: account.nationality,
+      birthday: account.birthday,
+      status: account.status,
+      goOffLine: account.goOffLine,
+      timeStamp: account.timeStamp,
+      relationshipStatus: account.relationshipStatus,
+    };
+    return res.status(200).send(accountInfo);
+  });
+});
+
+let gfs;
+mongoose.connection.once("open", () => {
+  gfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+    bucketName: `${process.env.ACCOUNT_COLLECTION}`,
+  });
+});
+
+const deletePreviousPic = (req, res, next) => {
+  if (req.body?.photoId) {
+    const _id = new mongoose.Types.ObjectId(req.body.photoId);
+    gfs.delete(_id, (err, res) => {
+      if (err) return res.status(404).send("Profile picture not update");
+      next();
+    });
+  } else {
+    next();
+  }
+};
+
+router.put(
+  "/update-profile-pic",
+  profileUploadMiddleware,
+  deletePreviousPic,
+  (req, res) => {
+    const _id = new mongoose.Types.ObjectId(req.body._id);
+    const img = req.file?.id;
+    Account.updateOne(
+      { _id },
+      {
+        $set: {
+          photoId: img,
+        },
+      },
+      (err, update) => {
+        if (err) return res.status(404).send("Profile picture not update");
+        console.log(update);
+        return res.status(200).send("updated profile picture");
+      }
+    );
+  }
+);
+
+router.put("/update-profile-info", (req, res) => {
+  const _id = new mongoose.Types.ObjectId(req.body._id);
+  Account.updateOne(
+    { _id },
+    {
+      $set: {
+        displayName: req.body.displayName,
+        religion: req.body.religion,
+        nationality: req.body.nationality,
+        gender: req.body.gender,
+        relationshipStatus: req.body.relationshipStatus,
+        birthday: req.body.birthday,
+      },
+    },
+    (err, update) => {
+      if (err) return res.status(404).send("Profile not update");
+      return res.status(200).send("updated successfully");
+    }
+  );
+});
+
+router.get("/get-profile-img/:id", (req, res) => {
+  // console.log(req.params.id);
+  if (!req.params.id) return res.status(400).send("file not exist");
+  const _id = new mongoose.Types.ObjectId(req.params.id);
+  gfs.find({ _id }).toArray((err, files) => {
+    // console.log(files, err);
+    if (err) return res.status(404).send(err.message);
+    if (!files || files.length === 0)
+      return res.status(400).send("no files exist");
+
+    const contentType = files[0].contentType;
+    //setting response header
+    res.set({
+      "Accept-Ranges": "bytes",
+      // "Content-Disposition": `attachment; filename=${req.params.filename}`,
+      "Content-Type": `${contentType}`,
+      "Access-Control-Allow-Origin": "*",
+    });
+
+    const downloadStream = gfs.openDownloadStream(_id);
+    downloadStream.on("error", (err) => {
+      return res.status(404).send(err.message);
+    });
+    return downloadStream.pipe(res);
   });
 });
 

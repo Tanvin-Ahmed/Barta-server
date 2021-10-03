@@ -2,7 +2,6 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { one_one_schema } from "../schema/one-one-schema";
-import Grid from "gridfs-stream";
 import { uploadMiddleware } from "../FileUpload/FileUpload";
 
 dotenv.config();

@@ -18,6 +18,11 @@ export const account_schema = new mongoose.Schema({
     default: "",
     // required: true,
   },
+  photoId: {
+    type: String,
+    default: "",
+    // required: true,
+  },
   chatList: {
     type: Array,
     default: [],
@@ -37,5 +42,24 @@ export const account_schema = new mongoose.Schema({
   },
   timeStamp: {
     type: Date,
+  },
+  birthday: {
+    type: Date,
+  },
+  nationality: {
+    type: String,
+    default: "",
+  },
+  gender: {
+    type: String,
+    default: "",
+  },
+  religion: {
+    type: String,
+    default: "",
+  },
+  relationshipStatus: {
+    type: String,
+    default: "",
   },
 });
