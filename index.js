@@ -22,10 +22,7 @@ dotenv.config();
 
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {
-  cors: {
-    origin: "https://barta-the-real-time-chat.netlify.app/",
-    methods: ["GET", "POST"],
-  },
+  cors: true,
 });
 //
 // data base
