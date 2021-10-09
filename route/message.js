@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { one_one_schema } from "../schema/one-one-schema";
 import { uploadMiddleware } from "../FileUpload/FileUpload";
+import { checkLogin } from "../middlewares/checkLogin";
 
 dotenv.config();
 
@@ -48,7 +49,7 @@ mongoose.connection.once("open", () => {
   });
 });
 
-router.post("/upload", uploadMiddleware, (req, res) => {
+router.post("/upload", checkLogin, uploadMiddleware, (req, res) => {
   let files = [];
   for (let i = 0; i < req.files.length; i++) {
     const element = req.files[i];
@@ -105,7 +106,7 @@ router.get("/file/:filename", (req, res) => {
   });
 });
 
-router.delete("/file/delete/:id", (req, res) => {
+router.delete("/file/delete/:id", checkLogin, (req, res) => {
   const _id = new mongoose.Types.ObjectId(req.params.id);
   gfs.delete(_id, (err, gridStore) => {
     if (err) {
@@ -116,7 +117,7 @@ router.delete("/file/delete/:id", (req, res) => {
   });
 });
 
-router.post("/postOneOneChat", (req, res) => {
+router.post("/postOneOneChat", checkLogin, (req, res) => {
   const chatMessage = new OneOneChat(req.body);
   chatMessage.save((err, result) => {
     if (err) {
@@ -127,7 +128,7 @@ router.post("/postOneOneChat", (req, res) => {
   });
 });
 
-router.post("/postCallInfo", (req, res) => {
+router.post("/postCallInfo", checkLogin, (req, res) => {
   const callInfo = new OneOneChat(req.body);
   callInfo.save((err, result) => {
     if (err) {
@@ -138,7 +139,7 @@ router.post("/postCallInfo", (req, res) => {
   });
 });
 
-router.post("/getOneOneChat/:roomId", (req, res) => {
+router.post("/getOneOneChat/:roomId", checkLogin, (req, res) => {
   const itemsPerPage = 35;
   const pageNum = parseInt(req.body.pageNum, 10);
   OneOneChat.find({ id: req.params.roomId })
@@ -153,7 +154,7 @@ router.post("/getOneOneChat/:roomId", (req, res) => {
     });
 });
 
-router.put("/updateChatMessage", (req, res) => {
+router.put("/updateChatMessage", checkLogin, (req, res) => {
   OneOneChat.findOneAndUpdate(
     { _id: req.body.id },
     {
@@ -169,7 +170,7 @@ router.put("/updateChatMessage", (req, res) => {
   );
 });
 
-router.put("/updateOnlyReact", (req, res) => {
+router.put("/updateOnlyReact", checkLogin, (req, res) => {
   OneOneChat.findOneAndUpdate(
     { _id: req.body.id, "react.sender": req.body.sender },
     {
@@ -185,7 +186,7 @@ router.put("/updateOnlyReact", (req, res) => {
   );
 });
 
-router.put("/removeReact", (req, res) => {
+router.put("/removeReact", checkLogin, (req, res) => {
   OneOneChat.findOneAndUpdate(
     { _id: req.body.id },
     {
@@ -201,7 +202,7 @@ router.put("/removeReact", (req, res) => {
   );
 });
 
-router.delete("/deleteChatMessage/:id", (req, res) => {
+router.delete("/deleteChatMessage/:id", checkLogin, (req, res) => {
   OneOneChat.deleteOne({ _id: req.params.id }, (err, result) => {
     if (err) {
       return res.status(404).send(err);

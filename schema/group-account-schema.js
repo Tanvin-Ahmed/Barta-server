@@ -5,8 +5,9 @@ export const groupAccountSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  photoURL: {
+  photoId: {
     type: String,
+    default: "",
   },
   members: {
     type: Array,

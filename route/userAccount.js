@@ -6,6 +6,7 @@ import { groupAccountSchema } from "../schema/group-account-schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { profileUploadMiddleware } from "../FileUpload/ProfilePicUpload";
+import { checkLogin } from "../middlewares/checkLogin";
 
 dotenv.config();
 
@@ -39,7 +40,9 @@ export const userIsOnline = (user) => {
 export const updateChatList = (socket, user) => {
   const userId = user?.split("@")[0];
 
-  const newFriend = mongoose.connection.collection("accounts").watch();
+  const newFriend = mongoose.connection
+    .collection(`${process.env.ACCOUNT_COLLECTION}s`)
+    .watch();
   newFriend.on("change", (change) => {
     if (change.operationType === "update") {
       const updateFiled = change?.updateDescription?.updatedFields;
@@ -51,8 +54,13 @@ export const updateChatList = (socket, user) => {
       } else if (updateFiled?.groups) {
         const id = updateFiled?.groups[updateFiled?.groups?.length - 1];
         if (userId === id?.member) {
-          socket.emit("add-group-list", id?.groupName);
+          socket.emit("add-group-list", id);
         }
+      } else {
+        socket.emit("update-profile-data", {
+          _id: change.documentKey._id,
+          updateFiled,
+        });
       }
     }
   });
@@ -79,7 +87,7 @@ export const userIsOffLine = (user) => {
   }
 };
 
-router.get("/:email", (req, res) => {
+router.get("/:email", checkLogin, (req, res) => {
   Account.findOne({ email: req.params.email }, (err, userAccount) => {
     if (err) {
       return res.status(404).send(err.message);
@@ -108,7 +116,7 @@ router.get("/:email", (req, res) => {
   });
 });
 
-router.get("/getFriendDetailsByEmail/:email", (req, res) => {
+router.get("/getFriendDetailsByEmail/:email", checkLogin, (req, res) => {
   Account.find({ email: req.params.email }, (err, account) => {
     if (err) {
       return req.status(404).send(err.message);
@@ -140,17 +148,34 @@ router.get("/getFriendDetailsByEmail/:email", (req, res) => {
   });
 });
 
-router.get("/receiverInfo/:id", (req, res) => {
-  Account.find({ _id: req.params.id }, (err, account) => {
+router.get("/receiverInfo/:id", checkLogin, (req, res) => {
+  Account.findOne({ _id: req.params.id }, (err, account) => {
     if (err) {
       return res.status(404).send(err.message);
     } else {
-      return res.status(200).send(account[0]);
+      const accountInfo = {
+        displayName: account.displayName,
+        email: account.email,
+        photoURL: account.photoURL,
+        photoId: account.photoId,
+        chatList: account.chatList,
+        groups: account.groups,
+        _id: account._id,
+        religion: account.religion,
+        gender: account.gender,
+        nationality: account.nationality,
+        birthday: account.birthday,
+        status: account.status,
+        goOffLine: account.goOffLine,
+        timeStamp: account.timeStamp,
+        relationshipStatus: account.relationshipStatus,
+      };
+      return res.status(200).send(accountInfo);
     }
   });
 });
 
-router.get("/allAccount/:searchString", (req, res) => {
+router.get("/allAccount/:searchString", checkLogin, (req, res) => {
   Account.find(
     { displayName: new RegExp(req.params.searchString, "i") },
     (err, accounts) => {
@@ -187,13 +212,13 @@ router.post("/sign-in", (req, res) => {
           // generate token
           const token = jwt.sign(
             {
-              _id: user._id,
-              email: user.email,
-              displayName: user.displayName,
+              _id: account._id,
+              email: account.email,
+              displayName: account.displayName,
               status: "active",
             },
             process.env.JWT_SECRET_KEY,
-            { expiresIn: "12h" }
+            { expiresIn: "5d" }
           );
 
           const accountInfo = {
@@ -240,7 +265,7 @@ router.post("/login", (req, res) => {
             status: "active",
           },
           process.env.JWT_SECRET_KEY,
-          { expiresIn: "12h" }
+          { expiresIn: "5d" }
         );
 
         const accountInfo = {
@@ -267,7 +292,7 @@ router.post("/login", (req, res) => {
   });
 });
 
-router.get("/userInfo/:id", (req, res) => {
+router.get("/userInfo/:id", checkLogin, (req, res) => {
   const _id = new mongoose.Types.ObjectId(req.params.id);
   Account.findOne({ _id }, (err, account) => {
     if (err) return res.status(404).send(err.message);
@@ -314,6 +339,7 @@ const deletePreviousPic = (req, res, next) => {
 
 router.put(
   "/update-profile-pic",
+  checkLogin,
   profileUploadMiddleware,
   deletePreviousPic,
   (req, res) => {
@@ -326,16 +352,16 @@ router.put(
           photoId: img,
         },
       },
-      (err, update) => {
+      (err) => {
         if (err) return res.status(404).send("Profile picture not update");
-        console.log(update);
+
         return res.status(200).send("updated profile picture");
       }
     );
   }
 );
 
-router.put("/update-profile-info", (req, res) => {
+router.put("/update-profile-info", checkLogin, (req, res) => {
   const _id = new mongoose.Types.ObjectId(req.body._id);
   Account.updateOne(
     { _id },
@@ -349,7 +375,7 @@ router.put("/update-profile-info", (req, res) => {
         birthday: req.body.birthday,
       },
     },
-    (err, update) => {
+    (err) => {
       if (err) return res.status(404).send("Profile not update");
       return res.status(200).send("updated successfully");
     }
@@ -357,11 +383,9 @@ router.put("/update-profile-info", (req, res) => {
 });
 
 router.get("/get-profile-img/:id", (req, res) => {
-  // console.log(req.params.id);
   if (!req.params.id) return res.status(400).send("file not exist");
   const _id = new mongoose.Types.ObjectId(req.params.id);
   gfs.find({ _id }).toArray((err, files) => {
-    // console.log(files, err);
     if (err) return res.status(404).send(err.message);
     if (!files || files.length === 0)
       return res.status(400).send("no files exist");
@@ -370,7 +394,6 @@ router.get("/get-profile-img/:id", (req, res) => {
     //setting response header
     res.set({
       "Accept-Ranges": "bytes",
-      // "Content-Disposition": `attachment; filename=${req.params.filename}`,
       "Content-Type": `${contentType}`,
       "Access-Control-Allow-Origin": "*",
     });
@@ -383,7 +406,7 @@ router.get("/get-profile-img/:id", (req, res) => {
   });
 });
 
-router.post("/", (req, res) => {
+router.post("/", checkLogin, (req, res) => {
   Account.find({ email: req.body.email }, (err, account) => {
     if (err) {
       return res.status(404).send(err.message);
@@ -404,7 +427,7 @@ router.post("/", (req, res) => {
   });
 });
 
-router.put("/updateChatList/:email", (req, res) => {
+router.put("/updateChatList/:email", checkLogin, (req, res) => {
   const email = req.params.email;
   const friendsInfo = req.body;
 
@@ -427,12 +450,12 @@ const GroupAccount = mongoose.model(
   groupAccountSchema
 );
 
-router.get("/groupList/:email", (req, res) => {
+router.get("/groupList/:email", checkLogin, (req, res) => {
   Account.findOne({ email: req.params.email }, (err, userAccount) => {
     if (err) {
       return res.status(404).send(err.message);
     } else {
-      if (!userAccount?.groups.length) {
+      if (userAccount?.groups.length === 0) {
         return res.status(200).send(userAccount?.groups);
       } else {
         const returnUsersInfo = (allGroup) => {
@@ -440,27 +463,25 @@ router.get("/groupList/:email", (req, res) => {
         };
         const groupList = [];
         userAccount?.groups?.forEach((group) => {
-          GroupAccount.findOne(
-            { groupName: group.groupName },
-            (err, account) => {
-              if (err) {
-                return res.status(404).send(err.message);
-              } else {
-                groupList.push(account);
-                if (userAccount?.groups?.length === groupList?.length) {
-                  const allGroup = groupList.reverse();
-                  returnUsersInfo(allGroup);
-                }
+          const _id = new mongoose.Types.ObjectId(group.groupId);
+          GroupAccount.findOne({ _id }, (err, account) => {
+            if (err) {
+              return res.status(404).send(err.message);
+            } else {
+              groupList.push(account);
+              if (userAccount?.groups?.length === groupList?.length) {
+                const allGroup = groupList.reverse();
+                returnUsersInfo(allGroup);
               }
             }
-          );
+          });
         });
       }
     }
   });
 });
 
-router.put("/updateGroupList/:email", (req, res) => {
+router.put("/updateGroupList/:email", checkLogin, (req, res) => {
   const email = req.params.email;
   const groupInfo = req.body;
   Account.updateOne(

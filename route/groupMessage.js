@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import Grid from "gridfs-stream";
 import { group_chat_schema } from "../schema/group-chat-schema";
 import { uploadMiddleware } from "../FileUpload/FileUpload";
+import { checkLogin } from "../middlewares/checkLogin";
 dotenv.config();
 
 export const groupChatFromSocket = (socket, roomId) => {
@@ -43,7 +44,7 @@ mongoose.connection.once("open", () => {
   gfs.collection(`${process.env.GROUP_CHAT_COLLECTION}`);
 });
 
-router.post("/upload", uploadMiddleware, (req, res) => {
+router.post("/upload", checkLogin, uploadMiddleware, (req, res) => {
   let files = [];
   for (let i = 0; i < req.files.length; i++) {
     const element = req.files[i];
@@ -90,7 +91,7 @@ router.get("/file/:filename", (req, res) => {
   });
 });
 
-router.delete("/file/delete/:id", (req, res) => {
+router.delete("/file/delete/:id", checkLogin, (req, res) => {
   gfs.remove(
     {
       _id: req.params.id,
@@ -106,7 +107,7 @@ router.delete("/file/delete/:id", (req, res) => {
   );
 });
 
-router.post("/messages/post", (req, res) => {
+router.post("/messages/post", checkLogin, (req, res) => {
   const message = req.body;
   const newChat = new GroupChat(message);
   newChat.save((err, chat) => {
@@ -115,7 +116,7 @@ router.post("/messages/post", (req, res) => {
   });
 });
 
-router.post("/messages/:groupName", (req, res) => {
+router.post("/messages/:groupName", checkLogin, (req, res) => {
   const itemsPerPage = 9;
   const pageNum = parseInt(req.body.pageNum, 10);
   GroupChat.find({ id: req.params.groupName })
@@ -130,7 +131,7 @@ router.post("/messages/:groupName", (req, res) => {
     });
 });
 
-router.put("/updateChatMessage", (req, res) => {
+router.put("/updateChatMessage", checkLogin, (req, res) => {
   GroupChat.findOneAndUpdate(
     { _id: req.body.id },
     {
@@ -146,7 +147,7 @@ router.put("/updateChatMessage", (req, res) => {
   );
 });
 
-router.put("/updateOnlyReact", (req, res) => {
+router.put("/updateOnlyReact", checkLogin, (req, res) => {
   GroupChat.findOneAndUpdate(
     { _id: req.body.id, "react.sender": req.body.sender },
     {
@@ -162,7 +163,7 @@ router.put("/updateOnlyReact", (req, res) => {
   );
 });
 
-router.put("/removeReact", (req, res) => {
+router.put("/removeReact", checkLogin, (req, res) => {
   GroupChat.findOneAndUpdate(
     { _id: req.body.id },
     {
@@ -178,7 +179,7 @@ router.put("/removeReact", (req, res) => {
   );
 });
 
-router.delete("/deleteChatMessage/:id", (req, res) => {
+router.delete("/deleteChatMessage/:id", checkLogin, (req, res) => {
   GroupChat.deleteOne({ _id: req.params.id }, (err, result) => {
     if (err) {
       return res.status(404).send(err);

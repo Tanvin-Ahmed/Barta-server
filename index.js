@@ -10,7 +10,7 @@ import userAccount, {
   userIsOnline,
 } from "./route/userAccount.js";
 import message, { oneOneMessageFromSocket } from "./route/message.js";
-import groupAccount from "./route/groupAccount.js";
+import groupAccount, { updateGroupInformation } from "./route/groupAccount.js";
 import groupMessage, { groupChatFromSocket } from "./route/groupMessage.js";
 import generateNewToken from "./route/generateNewToken.js";
 
@@ -48,6 +48,7 @@ mongoose
       socket.on("user-info", (userInfo) => {
         user[socket.id] = userInfo.email;
         updateChatList(socket, userInfo.email);
+        updateGroupInformation(socket, userInfo.email);
         userIsOnline(userInfo.email);
         socket.broadcast.emit("user-status", { ...userInfo, status: "active" });
       });
