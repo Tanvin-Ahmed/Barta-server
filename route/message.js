@@ -26,6 +26,12 @@ export const oneOneMessageFromSocket = (socket, roomId) => {
       }
     } else if (change.operationType === "update") {
       const updateFiled = change?.updateDescription?.updatedFields;
+      if (updateFiled?.status) {
+        return socket.emit("updated-message-status", {
+          _id: change?.documentKey?._id,
+          status: updateFiled?.status,
+        });
+      }
       socket.emit("update-react", {
         _id: change?.documentKey?._id,
         react:
@@ -205,6 +211,28 @@ router.delete("/deleteChatMessage/:id", checkLogin, (req, res) => {
     } else {
       return res.status(200).send(result);
     }
+  });
+});
+
+router.post("/unseen-message-to-seen", checkLogin, (req, res) => {
+  const ids = req.body;
+  let count = 0;
+
+  ids.forEach((id) => {
+    const _id = new mongoose.Types.ObjectId(id);
+    OneOneChat.updateOne(
+      { _id },
+      {
+        $set: { status: "seen" },
+      },
+      (err) => {
+        if (err) return res.status(500).send(err.message);
+        count += 1;
+        if (ids.length === count) {
+          return res.status(200).send("update successfully.");
+        }
+      }
+    );
   });
 });
 
