@@ -29,6 +29,10 @@ export const one_one_schema = new mongoose.Schema({
   callDescription: {
     type: String,
   },
+  status: {
+    type: String,
+    required: true,
+  },
   timeStamp: {
     type: Date,
     required: true,

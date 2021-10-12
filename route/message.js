@@ -42,8 +42,6 @@ export const oneOneMessageFromSocket = (socket, roomId) => {
 
 let gfs;
 mongoose.connection.once("open", () => {
-  // gfs = Grid(mongoose.connection.db, mongoose.mongo);
-  // gfs.collection(`${process.env.ONE_ONE_CHAT_COLLECTION}`);
   gfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
     bucketName: `${process.env.ONE_ONE_CHAT_COLLECTION}`,
   });
@@ -65,10 +63,9 @@ router.post("/upload", checkLogin, uploadMiddleware, (req, res) => {
     sender: req.body.sender,
     files,
     react: [],
+    status: req.body.status,
     timeStamp: req.body.timeStamp,
   };
-
-  // console.log(fileInfo);
 
   const newFiles = new OneOneChat(fileInfo);
   newFiles.save((err, result) => {
@@ -80,7 +77,6 @@ router.post("/upload", checkLogin, uploadMiddleware, (req, res) => {
   });
 });
 router.get("/file/:filename", (req, res) => {
-  // const _id = mongoose.Types.ObjectId(req.params.id);
   gfs.find({ filename: req.params.filename }).toArray((err, files) => {
     if (err) {
       return res.status(404).send(err.message);

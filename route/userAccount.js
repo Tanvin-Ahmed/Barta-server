@@ -193,7 +193,6 @@ router.post("/sign-in", (req, res) => {
     if (err) return res.status(404).send(err.message);
     if (account?.email === req.body.email)
       return res.status(400).send("Email already registered");
-
     bcrypt
       .hash(req.body.password, 10)
       .then((hashedPassword) => {
@@ -207,6 +206,7 @@ router.post("/sign-in", (req, res) => {
           birthday: req.body.birthday,
         });
         newUser.save((err, account) => {
+          console.log(err);
           if (err) return res.status(500).send("Sign In failed");
 
           // generate token
