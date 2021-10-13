@@ -60,6 +60,7 @@ router.post("/upload", checkLogin, uploadMiddleware, (req, res) => {
     sender: req.body.sender,
     files,
     react: [],
+    status: req.body.status,
     timeStamp: req.body.timeStamp,
   };
 
