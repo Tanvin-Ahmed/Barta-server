@@ -9,6 +9,7 @@ import { profileUploadMiddleware } from "../FileUpload/ProfilePicUpload";
 import { checkLogin } from "../middlewares/checkLogin";
 import { one_one_schema } from "../schema/one-one-schema";
 import { group_chat_schema } from "../schema/group-chat-schema";
+import { sendEmail } from "../utils/sendEmail";
 
 dotenv.config();
 
@@ -315,7 +316,7 @@ router.post("/login", (req, res) => {
   });
 });
 
-router.get("reset-password-request/:email", (req, res) => {
+router.get("/reset-password-request/:email", (req, res) => {
   const email = req.params.email;
   Account.findOne({ email }, (err, account) => {
     if (err) return res.status(404).send(err.message);
@@ -326,6 +327,28 @@ router.get("reset-password-request/:email", (req, res) => {
         },
         process.env.JWT_SECRET_KEY,
         { expiresIn: "5m" }
+      );
+      Account.updateOne(
+        { email },
+        {
+          $set: { resetToken: token },
+        },
+        (err) => {
+          if (err) return res.status(404).send(err.message);
+          const resetUrl = `https://barta-the-real-time-chat.netlify.app/reset-password/${token}`;
+          const message = `
+        <h1>You have requested for reset the password</h1>
+        <p>Please go to this link to reset your password</p>
+        <a href=${resetUrl} clicktracking=off>${resetUrl}</a>
+        `;
+
+          const options = {
+            to: email,
+            subject: "reset password",
+            html: message,
+          };
+          sendEmail(options, res);
+        }
       );
     } else {
       return res.status(422).send("No user registered with this email!");

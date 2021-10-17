@@ -13,11 +13,6 @@ export const account_schema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  photoURL: {
-    type: String,
-    default: "",
-    // required: true,
-  },
   photoId: {
     type: String,
     default: "",
@@ -59,6 +54,18 @@ export const account_schema = new mongoose.Schema({
     default: "",
   },
   relationshipStatus: {
+    type: String,
+    default: "",
+  },
+  resetToken: {
+    type: String,
+    default: "",
+  },
+  education: {
+    type: String,
+    default: "",
+  },
+  work: {
     type: String,
     default: "",
   },
