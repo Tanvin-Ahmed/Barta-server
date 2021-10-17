@@ -7,6 +7,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { profileUploadMiddleware } from "../FileUpload/ProfilePicUpload";
 import { checkLogin } from "../middlewares/checkLogin";
+import { one_one_schema } from "../schema/one-one-schema";
+import { group_chat_schema } from "../schema/group-chat-schema";
 
 dotenv.config();
 
@@ -14,6 +16,11 @@ const router = express.Router();
 const Account = mongoose.model(
   `${process.env.ACCOUNT_COLLECTION}`,
   account_schema
+);
+
+const OneOneChat = mongoose.model(
+  `${process.env.ONE_ONE_CHAT_COLLECTION}`,
+  one_one_schema
 );
 
 export const userIsOnline = (user) => {
@@ -104,11 +111,27 @@ router.get("/:email", checkLogin, (req, res) => {
           if (err) {
             return res.status(404).send(err.message);
           } else {
-            friend.push(account);
-            if (userAccount?.chatList?.length === friend?.length) {
-              const friends = friend.reverse();
-              returnUsersInfo(friends);
-            }
+            const ascendingSort = [
+              req.params.email.split("@")[0],
+              chat.email.split("@")[0],
+            ].sort();
+            const roomId = `${ascendingSort[0]}_${ascendingSort[1]}`;
+            OneOneChat.findOne({ id: roomId })
+              .sort({ _id: -1 })
+              .then((message) => {
+                const friendData = {
+                  ...account._doc,
+                  lastMessage: message,
+                };
+                friend.push(friendData);
+                if (userAccount?.chatList?.length === friend?.length) {
+                  const friends = friend.reverse();
+                  returnUsersInfo(friends);
+                }
+              })
+              .catch((err) => {
+                return res.status(404).send(err.message);
+              });
           }
         });
       });
@@ -292,6 +315,24 @@ router.post("/login", (req, res) => {
   });
 });
 
+router.get("reset-password-request/:email", (req, res) => {
+  const email = req.params.email;
+  Account.findOne({ email }, (err, account) => {
+    if (err) return res.status(404).send(err.message);
+    if (account?.email) {
+      const token = jwt.sign(
+        {
+          email,
+        },
+        process.env.JWT_SECRET_KEY,
+        { expiresIn: "5m" }
+      );
+    } else {
+      return res.status(422).send("No user registered with this email!");
+    }
+  });
+});
+
 router.get("/userInfo/:id", checkLogin, (req, res) => {
   const _id = new mongoose.Types.ObjectId(req.params.id);
   Account.findOne({ _id }, (err, account) => {
@@ -449,6 +490,10 @@ const GroupAccount = mongoose.model(
   `${process.env.GROUP_CHAT_ACCOUNT_COLLECTION}`,
   groupAccountSchema
 );
+const GroupChat = mongoose.model(
+  `${process.env.GROUP_CHAT_COLLECTION}`,
+  group_chat_schema
+);
 
 router.get("/groupList/:email", checkLogin, (req, res) => {
   Account.findOne({ email: req.params.email }, (err, userAccount) => {
@@ -468,11 +513,35 @@ router.get("/groupList/:email", checkLogin, (req, res) => {
             if (err) {
               return res.status(404).send(err.message);
             } else {
-              groupList.push(account);
-              if (userAccount?.groups?.length === groupList?.length) {
-                const allGroup = groupList.reverse();
-                returnUsersInfo(allGroup);
-              }
+              GroupChat.find({ id: _id })
+                .sort({ _id: -1 })
+                .limit(1)
+                .then((messages) => {
+                  if (messages.length > 0) {
+                    const msg = messages[0];
+                    groupList.push({
+                      ...account._doc,
+                      lastMessage: msg,
+                    });
+                  } else {
+                    groupList.push({
+                      ...account._doc,
+                      lastMessage: {
+                        _id: msg._id,
+                        id: _id,
+                        message: "No message available",
+                      },
+                    });
+                  }
+
+                  if (userAccount?.groups?.length === groupList?.length) {
+                    const allGroup = groupList.reverse();
+                    returnUsersInfo(allGroup);
+                  }
+                })
+                .catch((err) => {
+                  return res.status(404).send(err.message);
+                });
             }
           });
         });

@@ -117,10 +117,10 @@ router.post("/messages/post", checkLogin, (req, res) => {
   });
 });
 
-router.post("/messages/:groupName", checkLogin, (req, res) => {
+router.post("/messages/:roomId", checkLogin, (req, res) => {
   const itemsPerPage = 9;
   const pageNum = parseInt(req.body.pageNum, 10);
-  GroupChat.find({ id: req.params.groupName })
+  GroupChat.find({ id: req.params.roomId })
     .sort({ _id: -1 })
     .skip(itemsPerPage * (pageNum - 1))
     .limit(itemsPerPage)
@@ -215,6 +215,25 @@ router.post("/unseen-message-to-seen", checkLogin, (req, res) => {
       }
     });
   });
+});
+
+router.get("/get-lastMessage-for-chatBar/:id", (req, res) => {
+  GroupChat.findOne({ id: req.params.id })
+    .sort({ _id: -1 })
+    .then((message) => {
+      const msg = {
+        groupId: message.id,
+        _id: message._id,
+        message: message.message || "",
+        files: message.files || [],
+        status: message.status,
+        timeStamp: message.timeStamp,
+      };
+      res.status(200).send(msg);
+    })
+    .catch((err) => {
+      res.status(404).send(err.message);
+    });
 });
 
 export default router;

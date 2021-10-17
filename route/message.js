@@ -20,10 +20,7 @@ export const oneOneMessageFromSocket = (socket, roomId) => {
     // console.log(change);
     if (change.operationType === "insert") {
       const message = change.fullDocument;
-
-      if (message.id === roomId) {
-        socket.emit("new-message", message);
-      }
+      socket.emit("new-message", message);
     } else if (change.operationType === "update") {
       const updateFiled = change?.updateDescription?.updatedFields;
       if (updateFiled?.status) {
@@ -234,6 +231,25 @@ router.post("/unseen-message-to-seen", checkLogin, (req, res) => {
       }
     );
   });
+});
+
+router.get("/get-lastMessage-for-chatBar/:id", (req, res) => {
+  OneOneChat.findOne({ id: req.params.id })
+    .sort({ _id: -1 })
+    .then((message) => {
+      const msg = {
+        roomId: message.id,
+        _id: message._id,
+        message: message.message || "",
+        files: message.files || [],
+        status: message.status,
+        timeStamp: message.timeStamp,
+      };
+      res.status(200).send(msg);
+    })
+    .catch((err) => {
+      res.status(404).send(err.message);
+    });
 });
 
 export default router;

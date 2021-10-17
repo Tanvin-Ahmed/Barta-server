@@ -22,6 +22,10 @@ export const group_chat_schema = new mongoose.Schema({
   react: {
     type: Array,
   },
+  status: {
+    type: String,
+    required: true,
+  },
   // for call
   callDuration: {
     type: Object,
