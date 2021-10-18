@@ -329,7 +329,7 @@ router.get("/reset-password-request/:email", (req, res) => {
         process.env.JWT_SECRET_KEY,
         { expiresIn: "5m" }
       );
-      const resetUrl = `http://localhost:3000/reset-password/${token}`;
+      const resetUrl = `https://barta-the-real-time-chat.netlify.app/reset-password/${token}`;
       const message = `
         <h1>You have requested for reset the password</h1>
         <p>Please go to this link to reset your password</p>
