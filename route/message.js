@@ -233,7 +233,7 @@ router.post("/unseen-message-to-seen", checkLogin, (req, res) => {
   });
 });
 
-router.get("/get-lastMessage-for-chatBar/:id", (req, res) => {
+router.get("/get-lastMessage-for-chatBar/:id", checkLogin, (req, res) => {
   OneOneChat.findOne({ id: req.params.id })
     .sort({ _id: -1 })
     .then((message) => {

@@ -320,39 +320,52 @@ router.get("/reset-password-request/:email", (req, res) => {
   const email = req.params.email;
   Account.findOne({ email }, (err, account) => {
     if (err) return res.status(404).send(err.message);
-    if (account?.email) {
+    if (account) {
       const token = jwt.sign(
         {
+          _id: account._id,
           email,
         },
         process.env.JWT_SECRET_KEY,
         { expiresIn: "5m" }
       );
-      Account.updateOne(
-        { email },
-        {
-          $set: { resetToken: token },
-        },
-        (err) => {
-          if (err) return res.status(404).send(err.message);
-          const resetUrl = `https://barta-the-real-time-chat.netlify.app/reset-password/${token}`;
-          const message = `
+      const resetUrl = `http://localhost:3000/reset-password/${token}`;
+      const message = `
         <h1>You have requested for reset the password</h1>
         <p>Please go to this link to reset your password</p>
+        <p style="color: red; font-weight: bold; font-size: 20px;">Please reset password in 5 minutes</p>
         <a href=${resetUrl} clicktracking=off>${resetUrl}</a>
         `;
-
-          const options = {
-            to: email,
-            subject: "reset password",
-            html: message,
-          };
-          sendEmail(options, res);
-        }
-      );
+      const options = {
+        to: email,
+        subject: "reset password",
+        html: message,
+      };
+      sendEmail(options, res);
     } else {
       return res.status(422).send("No user registered with this email!");
     }
+  });
+});
+
+router.put("/reset-password", (req, res) => {
+  const password = req.body.password;
+  jwt.verify(req.body.token, process.env.JWT_SECRET_KEY, (err, { email }) => {
+    if (err)
+      return res.status(401).send("Time is over, please resend a request");
+    bcrypt.hash(password, 10).then((hashedPassword) => {
+      Account.updateOne(
+        { email },
+        { $set: { password: hashedPassword } },
+        (err) => {
+          if (err)
+            return res
+              .status(404)
+              .send("something went wrong, please try again");
+          return res.status(200).send("password reset successfully");
+        }
+      );
+    });
   });
 });
 
