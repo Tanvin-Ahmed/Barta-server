@@ -133,7 +133,7 @@ router.post("/postCallInfo", checkLogin, (req, res) => {
     if (err) {
       return res.status(500).send(err);
     } else {
-      return res.status(201).send(result.insertCount > 0);
+      return res.status(201).send(result);
     }
   });
 });

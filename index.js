@@ -56,6 +56,14 @@ mongoose
       });
 
       // private call
+      socket.on("is-receiver-free", (data) => {
+        socket.emit("is-me-free", data);
+      });
+
+      socket.on("my-status-for-call", (data) => {
+        socket.emit("receiver-status-for-call", data);
+      });
+
       socket.on("callUser", (data) => {
         // for (const u in user) {
         //   if (user[u] === data.userToCall) {
