@@ -52,26 +52,45 @@ router.get("/groupInfo/:id", checkLogin, (req, res) => {
 
 router.put("/remove-group-member", checkLogin, (req, res) => {
   const _id = new mongoose.Types.ObjectId(req.body._id);
-  Group.findOneAndUpdate(
-    { _id },
-    {
-      $pull: { members: req.body.email },
-    },
-    (err) => {
-      if (err) return res.status(404).send(err.message);
-
-      UserAccount.findOneAndUpdate(
-        { email: req.body.email },
+  Group.findOne({ _id }, (err, account) => {
+    if (err) return res.status(404).send(err.message);
+    if (account?.members?.length > 1) {
+      Group.findOneAndUpdate(
+        { _id },
         {
-          $pull: { groups: { groupId: req.body._id } },
+          $pull: { members: req.body.email },
         },
         (err) => {
           if (err) return res.status(404).send(err.message);
-          return res.status(200).send("group remove successfully");
+
+          UserAccount.findOneAndUpdate(
+            { email: req.body.email },
+            {
+              $pull: { groups: { groupId: req.body._id } },
+            },
+            (err) => {
+              if (err) return res.status(404).send(err.message);
+              return res.status(200).send("group remove successfully");
+            }
+          );
         }
       );
+    } else if (account?.members?.length === 1) {
+      Group.deleteOne({ _id }, (err) => {
+        if (err) return res.status(501).send(err.message);
+        UserAccount.findOneAndUpdate(
+          { email: req.body.email },
+          {
+            $pull: { groups: { groupId: req.body._id } },
+          },
+          (err) => {
+            if (err) return res.status(404).send(err.message);
+            return res.status(200).send("group remove successfully");
+          }
+        );
+      });
     }
-  );
+  });
 });
 
 router.put("/add-new-member", checkLogin, (req, res) => {

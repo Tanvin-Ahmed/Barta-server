@@ -602,4 +602,128 @@ router.put("/updateGroupList/:email", checkLogin, (req, res) => {
   );
 });
 
+// delete account
+const deleteAllPrivateChat = (req, res, next) => {
+  const count = 0;
+  if (req.body.friendList.length === 0) return next();
+  req.body.friendList.forEach((friend) => {
+    const sortedId = [
+      friend.split("@")[0],
+      req.body.email.split("@")[0],
+    ].sort();
+    const id = `${sortedId[0]}_${sortedId[1]}`;
+    OneOneChat.deleteMany({ id }, (err) => {
+      if (err) return res.status(501).send(err.message);
+      count += 1;
+      if (count === req.body?.friendList?.length) {
+        next();
+      }
+    });
+  });
+};
+
+const unfriend = (req, res, next) => {
+  const count = 0;
+  if (req.body?.friendList?.length === 0) return next();
+
+  req.body?.friendList?.forEach((friend) => {
+    Account.updateOne(
+      { email: friend },
+      {
+        $pull: { chatList: { email: req.body.email } },
+      },
+      (err) => {
+        if (err) return res.status(501).send(err.message);
+        count += 1;
+        if (count === req.body.friendList.length) {
+          next();
+        }
+      }
+    );
+  });
+};
+
+const deleteGroupChats = (req, res, next) => {
+  if (req.body?.groupList?.length === 0) return next();
+
+  const count = 0;
+  req.body?.groupList?.forEach((groupId) => {
+    GroupChat.deleteMany(
+      { $and: [{ id: groupId }, { sender: req.body.email }] },
+      (err) => {
+        if (err) return res.status(501).send(err.message);
+
+        count += 1;
+        if (count === req.body.groupList.length) {
+          next();
+        }
+      }
+    );
+  });
+};
+let groupAccountGfs;
+mongoose.connection.once("open", () => {
+  groupAccountGfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+    bucketName: `${process.env.GROUP_CHAT_ACCOUNT_COLLECTION}`,
+  });
+});
+const removeFromGroupMember = (req, res, next) => {
+  const count = 0;
+  if (req.body?.groupList?.length === 0) return next();
+
+  req.body?.groupList?.forEach((groupId) => {
+    const _id = new mongoose.Types.ObjectId(groupId);
+    GroupAccount.findOne({ _id }, (err, account) => {
+      if (err) return res.status(400).send(err.message);
+      if (account.members.length > 1) {
+        GroupAccount.updateOne(
+          { _id },
+          {
+            $pull: { members: req.body.email },
+          },
+          (err) => {
+            if (err) return res.status(501).send(err.message);
+
+            count += 1;
+            if (count === req.body.groupList.length) {
+              next();
+            }
+          }
+        );
+      } else if (account?.members?.length === 1) {
+        if (account.photoId) {
+          const photoId = new mongoose.Types.ObjectId(account?.photoId);
+          groupAccountGfs.delete({ _id: photoId }, (err) => {
+            if (err) return res.status(501).send(err.message);
+            GroupAccount.deleteOne({ _id }, (err) => {
+              if (err) return res.status(501).send(err.message);
+              next();
+            });
+          });
+        } else {
+          GroupAccount.deleteOne({ _id }, (err) => {
+            if (err) return res.status(501).send(err.message);
+            next();
+          });
+        }
+      }
+    });
+  });
+};
+
+router.post(
+  "/delete-my-account",
+  checkLogin,
+  deleteAllPrivateChat,
+  unfriend,
+  deleteGroupChats,
+  removeFromGroupMember,
+  (req, res) => {
+    Account.deleteOne({ email: req.body.email }, (err) => {
+      if (err) return res.status(501).send(err.message);
+      return res.status(200).send("Account deleted successfully");
+    });
+  }
+);
+
 export default router;
