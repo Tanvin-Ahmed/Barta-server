@@ -44,7 +44,7 @@ mongoose
     io.on("connection", (socket) => {
       socket.on("user-info", (userInfo) => {
         user[socket.id] = userInfo.email;
-        updateChatList(socket, userInfo.email);
+        updateChatList(socket);
         updateGroupInformation(socket, userInfo.email);
         userIsOnline(userInfo.email);
         socket.broadcast.emit("user-status", { ...userInfo, status: "active" });

@@ -20,6 +20,12 @@ export const groupChatFromSocket = (socket, roomId) => {
       }
     } else if (change.operationType === "update") {
       const updateFiled = change?.updateDescription?.updatedFields;
+      if (updateFiled?.status) {
+        return socket.emit("updated-message-status", {
+          _id: change?.documentKey?._id,
+          status: updateFiled?.status,
+        });
+      }
       socket.emit("update-react", {
         _id: change?.documentKey?._id,
         react:

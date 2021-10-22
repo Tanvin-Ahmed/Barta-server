@@ -5,6 +5,7 @@ import { groupAccountSchema } from "../schema/group-account-schema";
 import { checkLogin } from "../middlewares/checkLogin";
 import { GroupProfileUploadMiddleware } from "../FileUpload/GroupProfileUpload";
 import { account_schema } from "../schema/account-schema";
+import { group_chat_schema } from "../schema/group-chat-schema";
 
 dotenv.config();
 
@@ -50,6 +51,11 @@ router.get("/groupInfo/:id", checkLogin, (req, res) => {
   });
 });
 
+const GroupChat = mongoose.model(
+  `${process.env.GROUP_CHAT_COLLECTION}`,
+  group_chat_schema
+);
+
 router.put("/remove-group-member", checkLogin, (req, res) => {
   const _id = new mongoose.Types.ObjectId(req.body._id);
   Group.findOne({ _id }, (err, account) => {
@@ -76,18 +82,22 @@ router.put("/remove-group-member", checkLogin, (req, res) => {
         }
       );
     } else if (account?.members?.length === 1) {
-      Group.deleteOne({ _id }, (err) => {
+      GroupChat.deleteMany({ id: req.body._id }, (err) => {
         if (err) return res.status(501).send(err.message);
-        UserAccount.findOneAndUpdate(
-          { email: req.body.email },
-          {
-            $pull: { groups: { groupId: req.body._id } },
-          },
-          (err) => {
-            if (err) return res.status(404).send(err.message);
-            return res.status(200).send("group remove successfully");
-          }
-        );
+
+        Group.deleteOne({ _id }, (err) => {
+          if (err) return res.status(501).send(err.message);
+          UserAccount.findOneAndUpdate(
+            { email: req.body.email },
+            {
+              $pull: { groups: { groupId: req.body._id } },
+            },
+            (err) => {
+              if (err) return res.status(404).send(err.message);
+              return res.status(200).send("group remove successfully");
+            }
+          );
+        });
       });
     }
   });

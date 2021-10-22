@@ -45,9 +45,7 @@ export const userIsOnline = (user) => {
   }
 };
 
-export const updateChatList = (socket, user) => {
-  const userId = user?.split("@")[0];
-
+export const updateChatList = (socket) => {
   const newFriend = mongoose.connection
     .collection(`${process.env.ACCOUNT_COLLECTION}s`)
     .watch();
@@ -55,15 +53,15 @@ export const updateChatList = (socket, user) => {
     if (change.operationType === "update") {
       const updateFiled = change?.updateDescription?.updatedFields;
       if (updateFiled?.chatList) {
-        const id = updateFiled?.chatList[updateFiled?.chatList?.length - 1];
-        if (userId === id?.friendOf) {
-          socket.emit("add-friend-list", id?.email);
-        }
+        socket.emit("update-friend-list", {
+          chatList: updateFiled?.chatList,
+          _id: change?.documentKey?._id,
+        });
       } else if (updateFiled?.groups) {
-        const id = updateFiled?.groups[updateFiled?.groups?.length - 1];
-        if (userId === id?.member) {
-          socket.emit("add-group-list", id);
-        }
+        return socket.emit("update-group-list", {
+          groupList: updateFiled?.groups,
+          _id: change?.documentKey?._id,
+        });
       } else {
         socket.emit("update-profile-data", {
           _id: change.documentKey._id,
@@ -519,6 +517,36 @@ router.put("/updateChatList/:email", checkLogin, (req, res) => {
       }
     }
   );
+});
+
+router.put("/remove-friend", checkLogin, (req, res) => {
+  let id = [
+    req.body.userEmail.split("@")[0],
+    req.body.friendEmail.split("@")[0],
+  ].sort();
+  id = `${id[0]}_${id[1]}`;
+  OneOneChat.deleteMany({ id }, (err) => {
+    if (err) return res.status(501).send(err.message);
+    Account.updateOne(
+      { email: req.body.userEmail },
+      {
+        $pull: { chatList: { email: req.body.friendEmail } },
+      },
+      (err) => {
+        if (err) return res.status(501).send(err.message);
+        Account.updateOne(
+          { email: req.body.friendEmail },
+          {
+            $pull: { chatList: { email: req.body.userEmail } },
+          },
+          (err) => {
+            if (err) return res.status(501).send(err.message);
+            return res.status(200).send("Friend removed successfully");
+          }
+        );
+      }
+    );
+  });
 });
 
 ///////////// group list //////////////
