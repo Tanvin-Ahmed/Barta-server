@@ -138,33 +138,46 @@ router.get("/:email", checkLogin, (req, res) => {
   });
 });
 
-router.get("/getFriendDetailsByEmail/:email", checkLogin, (req, res) => {
-  Account.find({ email: req.params.email }, (err, account) => {
+router.post("/getFriendDetailsByEmail", checkLogin, (req, res) => {
+  Account.findOne({ email: req.body.friendEmail }, (err, account) => {
     if (err) {
       return req.status(404).send(err.message);
     } else {
-      const user = account[0];
-      if (user) {
-        let info = {};
-        if (user.status === "active") {
-          info = {
-            _id: user?._id,
-            email: user?.email,
-            displayName: user?.displayName,
-            photoURL: user?.photoURL,
-            status: user?.status,
-          };
-        } else {
-          info = {
-            _id: user?._id,
-            email: user?.email,
-            displayName: user?.displayName,
-            photoURL: user?.photoURL,
-            status: user?.status,
-            goOffLine: user?.goOffLine,
-          };
-        }
-        return res.status(200).send(info);
+      if (account) {
+        let id = [
+          req.body.friendEmail.split("@")[0],
+          req.body.userEmail.split("@")[0],
+        ].sort();
+        id = `${id[0]}_${id[1]}`;
+        OneOneChat.findOne({ id })
+          .sort({ _id: -1 })
+          .then((chat) => {
+            let info = {};
+            if (user.status === "active") {
+              info = {
+                _id: account?._id,
+                email: account?.email,
+                displayName: account?.displayName,
+                photoId: account?.photoId,
+                status: account?.status,
+                lastMessage: chat,
+              };
+            } else {
+              info = {
+                _id: account?._id,
+                email: account?.email,
+                displayName: account?.displayName,
+                photoId: account?.photoId,
+                status: account?.status,
+                goOffLine: account?.goOffLine,
+                lastMessage: chat,
+              };
+            }
+            return res.status(200).send(info);
+          })
+          .catch((err) => {
+            return res.status(404).send(err.message);
+          });
       }
     }
   });
