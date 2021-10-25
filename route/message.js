@@ -237,19 +237,19 @@ router.get("/get-lastMessage-for-chatBar/:id", checkLogin, (req, res) => {
   OneOneChat.findOne({ id: req.params.id })
     .sort({ _id: -1 })
     .then((message) => {
-      const msg = {
-        roomId: message.id,
-        _id: message._id,
-        message: message.message || "",
-        files: message.files || [],
-        status: message.status,
-        timeStamp: message.timeStamp,
-      };
-      res.status(200).send(msg);
+      res.status(200).send(message);
     })
     .catch((err) => {
       res.status(404).send(err.message);
     });
+});
+
+router.delete("/delete-conversation/:id", checkLogin, (req, res) => {
+  const id = req.params.id;
+  OneOneChat.deleteMany({ id }, (err) => {
+    if (err) return res.status(501).send(err.message);
+    return res.status(200).send("deleted successfully");
+  });
 });
 
 export default router;

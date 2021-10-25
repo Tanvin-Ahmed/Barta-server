@@ -108,13 +108,15 @@ mongoose
         }
       );
       socket.on("join room", ({ roomID, userID, userName }) => {
-        if (users[roomID]) {
-          users[roomID].push({ id: userID, name: userName });
+        if (users[roomID?.roomId]) {
+          users[roomID?.roomId].push({ id: userID, name: userName });
         } else {
-          users[roomID] = [{ id: userID, name: userName }];
+          users[roomID?.roomId] = [{ id: userID, name: userName }];
         }
         socketToRoom[userID] = roomID;
-        const usersInThisRoom = users[roomID].filter(({ id }) => id !== userID);
+        const usersInThisRoom = users[roomID?.roomId].filter(
+          ({ id }) => id !== userID
+        );
         socket.emit("all users", { usersInThisRoom, roomID });
         socket.emit("total user", { usersInThisRoom, roomID });
       });
@@ -146,6 +148,9 @@ mongoose
         let room = users[roomID];
         if (room) {
           room = room.filter(({ id }) => id !== userID);
+          if (room.length === 0) {
+            return socket.emit("group call is closed", roomID);
+          }
           users[roomID] = room;
           socket.broadcast.emit("user left", userID);
           if (room.length === 0) {

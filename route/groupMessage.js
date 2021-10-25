@@ -242,4 +242,12 @@ router.get("/get-lastMessage-for-chatBar/:id", checkLogin, (req, res) => {
     });
 });
 
+router.delete("/delete-conversation/:id", checkLogin, (req, res) => {
+  const id = req.params.id;
+  GroupChat.deleteMany({ id }, (err) => {
+    if (err) return res.status(501).send(err.message);
+    return res.status(200).send("deleted successfully");
+  });
+});
+
 export default router;
