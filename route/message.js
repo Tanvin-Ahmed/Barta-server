@@ -50,14 +50,8 @@ mongoose.connection.once("open", () => {
 	});
 });
 
-// const logger = (req, res, next) => {
-// 	console.log(req.body, "and", req.files);
-// 	next();
-// };
-
 router.post("/upload", checkLogin, uploadMiddleware, (req, res) => {
 	let files = [];
-	console.log(req.files);
 	// Bad request: handle route if empty file
 	if (req.files.length === 0) {
 		return res.status(400).send("File not found");
@@ -95,6 +89,9 @@ router.get("/file/:filename", (req, res) => {
 		if (err) {
 			return res.status(404).send(err.message);
 		} else {
+			if (!files || files.length === 0)
+				return res.status(400).send("file not exist");
+
 			const contentType = files[0].contentType;
 			//setting response header
 			res.set({
@@ -103,9 +100,6 @@ router.get("/file/:filename", (req, res) => {
 				"Content-Type": `${contentType}`,
 				"Access-Control-Allow-Origin": "*",
 			});
-
-			if (!files || files.length === 0)
-				return res.status(400).send("file not exist");
 
 			const downloadStream = gfs.openDownloadStreamByName(req.params.filename);
 			downloadStream.on("error", err => {
